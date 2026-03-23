@@ -12,7 +12,6 @@ import {
   TEMPLATES,
   VARIABLE_COST_FIELDS,
 } from "@/lib/constants";
-import { formatCurrency } from "@/lib/format";
 import { cn, percentFromRatio, ratioFromPercentInput } from "@/lib/utils";
 import type { AppAction } from "@/lib/app-state";
 import type { AppState, CategoryKey, FieldDefinition, PriceCatalogItem } from "@/lib/types";
@@ -26,6 +25,8 @@ interface SettingsSidebarProps {
   onDeleteScenario: (scenarioId: string) => void;
   savedScenarioOptions: Array<{ id: string; name: string }>;
 }
+
+type SettingsView = "basics" | "menuCosts" | "operations";
 
 function SegmentButton({
   active,
@@ -319,6 +320,7 @@ export function SettingsSidebar({
   onDeleteScenario,
   savedScenarioOptions,
 }: SettingsSidebarProps) {
+  const [settingsView, setSettingsView] = useState<SettingsView>("basics");
   const storeCategory = store.categories;
 
   return (
@@ -413,6 +415,410 @@ export function SettingsSidebar({
       </div>
 
       <div className="rounded-[28px] border border-[#d5ddda] bg-white/95 p-4 shadow-[0_12px_36px_rgba(22,52,46,0.06)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#67847e]">
+          입력 묶음
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
+          <button
+            type="button"
+            onClick={() => setSettingsView("basics")}
+            className={cn(
+              "rounded-2xl border px-3 py-3 text-left transition",
+              settingsView === "basics"
+                ? "border-[#173a33] bg-[#f4faf7]"
+                : "border-[#d6dfdb] bg-[#fbfdfc] hover:border-[#b8c7c2]",
+            )}
+          >
+            <p className="text-sm font-semibold text-[#173a33]">기본 입력</p>
+            <p className="mt-1 text-xs text-[#64807a]">A 매출 기준 + 시작 설정</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettingsView("menuCosts")}
+            className={cn(
+              "rounded-2xl border px-3 py-3 text-left transition",
+              settingsView === "menuCosts"
+                ? "border-[#173a33] bg-[#f4faf7]"
+                : "border-[#d6dfdb] bg-[#fbfdfc] hover:border-[#b8c7c2]",
+            )}
+          >
+            <p className="text-sm font-semibold text-[#173a33]">메뉴 · 원가</p>
+            <p className="mt-1 text-xs text-[#64807a]">B 메뉴 스펙 + C~D 원가 단가</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettingsView("operations")}
+            className={cn(
+              "rounded-2xl border px-3 py-3 text-left transition",
+              settingsView === "operations"
+                ? "border-[#173a33] bg-[#f4faf7]"
+                : "border-[#d6dfdb] bg-[#fbfdfc] hover:border-[#b8c7c2]",
+            )}
+          >
+            <p className="text-sm font-semibold text-[#173a33]">운영비</p>
+            <p className="mt-1 text-xs text-[#64807a]">E 변동비 + F~H 운영 비용</p>
+          </button>
+        </div>
+      </div>
+
+      {settingsView === "basics" ? (
+        <SectionCard
+          categoryKey="sales"
+          category={storeCategory.sales}
+          onToggle={(next) =>
+            dispatch({
+              type: "updateCategory",
+              categoryKey: "sales",
+              patch: { enabled: next },
+            })
+          }
+          onCollapse={() =>
+            dispatch({
+              type: "updateCategory",
+              categoryKey: "sales",
+              patch: { collapsed: !storeCategory.sales.collapsed },
+            })
+          }
+        >
+          <FieldsGroup
+            fields={SALES_FIELDS}
+            values={store.sales}
+            update={(field, value) =>
+              dispatch({
+                type: "updateStoreField",
+                section: "sales",
+                field,
+                value,
+              })
+            }
+            showAdvanced
+          />
+        </SectionCard>
+      ) : null}
+
+      {settingsView === "menuCosts" ? (
+        <>
+          <SectionCard
+            categoryKey="menuSpec"
+            category={storeCategory.menuSpec}
+            onToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "menuSpec",
+                patch: { enabled: next },
+              })
+            }
+            onCollapse={() =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "menuSpec",
+                patch: { collapsed: !storeCategory.menuSpec.collapsed },
+              })
+            }
+            titleExtra={
+              <div className="rounded-2xl bg-[#f6faf8] px-3 py-3 text-sm text-[#56726c]">
+                메뉴별 컵 용량, 샷 수, 재료량, HOT/ICE 가격은 중앙의 메뉴 표에서 바로 수정합니다.
+              </div>
+            }
+          >
+            <div className="rounded-2xl border border-dashed border-[#cad5d1] px-3 py-3 text-sm text-[#607d76]">
+              판매 비중 합계 {store.menus.reduce((sum, menu) => sum + menu.share, 0).toFixed(1)}%
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            categoryKey="ingredients"
+            category={storeCategory.ingredients}
+            onToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "ingredients",
+                patch: { enabled: next },
+              })
+            }
+            onCollapse={() =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "ingredients",
+                patch: { collapsed: !storeCategory.ingredients.collapsed },
+              })
+            }
+            titleExtra={
+              <button
+                type="button"
+                onClick={() =>
+                  dispatch({
+                    type: "updateCategory",
+                    categoryKey: "ingredients",
+                    patch: { showAdvanced: !storeCategory.ingredients.showAdvanced },
+                  })
+                }
+                className="inline-flex items-center gap-2 rounded-full bg-[#eef4f2] px-3 py-2 text-xs font-semibold text-[#4f6b66]"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                고급 재료 {storeCategory.ingredients.showAdvanced ? "숨기기" : "보기"}
+              </button>
+            }
+          >
+            <PriceCatalogEditor
+              items={state.priceCatalog.ingredients}
+              showAdvanced={storeCategory.ingredients.showAdvanced}
+              onPriceChange={(itemId, value) =>
+                dispatch({
+                  type: "updateCatalogItem",
+                  catalog: "ingredients",
+                  itemId,
+                  patch: { pricePerUnit: value },
+                })
+              }
+              onToggle={(itemId, enabled) =>
+                dispatch({
+                  type: "updateCatalogItem",
+                  catalog: "ingredients",
+                  itemId,
+                  patch: { enabled },
+                })
+              }
+            />
+          </SectionCard>
+
+          <SectionCard
+            categoryKey="packaging"
+            category={storeCategory.packaging}
+            onToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "packaging",
+                patch: { enabled: next },
+              })
+            }
+            onCollapse={() =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "packaging",
+                patch: { collapsed: !storeCategory.packaging.collapsed },
+              })
+            }
+            titleExtra={
+              <button
+                type="button"
+                onClick={() =>
+                  dispatch({
+                    type: "updateCategory",
+                    categoryKey: "packaging",
+                    patch: { showAdvanced: !storeCategory.packaging.showAdvanced },
+                  })
+                }
+                className="inline-flex items-center gap-2 rounded-full bg-[#eef4f2] px-3 py-2 text-xs font-semibold text-[#4f6b66]"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                고급 포장 {storeCategory.packaging.showAdvanced ? "숨기기" : "보기"}
+              </button>
+            }
+          >
+            <PriceCatalogEditor
+              items={state.priceCatalog.packaging}
+              showAdvanced={storeCategory.packaging.showAdvanced}
+              onPriceChange={(itemId, value) =>
+                dispatch({
+                  type: "updateCatalogItem",
+                  catalog: "packaging",
+                  itemId,
+                  patch: { pricePerUnit: value },
+                })
+              }
+              onToggle={(itemId, enabled) =>
+                dispatch({
+                  type: "updateCatalogItem",
+                  catalog: "packaging",
+                  itemId,
+                  patch: { enabled },
+                })
+              }
+            />
+          </SectionCard>
+        </>
+      ) : null}
+
+      {settingsView === "operations" ? (
+        <>
+          <SectionCard
+            categoryKey="variableCosts"
+            category={storeCategory.variableCosts}
+            onToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "variableCosts",
+                patch: { enabled: next },
+              })
+            }
+            onCollapse={() =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "variableCosts",
+                patch: { collapsed: !storeCategory.variableCosts.collapsed },
+              })
+            }
+          >
+            <FieldsGroup
+              fields={VARIABLE_COST_FIELDS}
+              values={store.variableCosts}
+              update={(field, value) =>
+                dispatch({
+                  type: "updateStoreField",
+                  section: "variableCosts",
+                  field,
+                  value,
+                })
+              }
+              showAdvanced
+            />
+          </SectionCard>
+
+          <SectionCard
+            categoryKey="labor"
+            category={storeCategory.labor}
+            onToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "labor",
+                patch: { enabled: next },
+              })
+            }
+            onCollapse={() =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "labor",
+                patch: { collapsed: !storeCategory.labor.collapsed },
+              })
+            }
+            onBundleToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "labor",
+                patch: { useBundle: next },
+              })
+            }
+            onAdvancedToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "labor",
+                patch: { showAdvanced: next },
+              })
+            }
+          >
+            <FieldsGroup
+              fields={LABOR_FIELDS}
+              values={store.labor}
+              update={(field, value) =>
+                dispatch({
+                  type: "updateStoreField",
+                  section: "labor",
+                  field,
+                  value,
+                })
+              }
+              showAdvanced={!storeCategory.labor.useBundle && storeCategory.labor.showAdvanced}
+            />
+          </SectionCard>
+
+          <SectionCard
+            categoryKey="fixedCosts"
+            category={storeCategory.fixedCosts}
+            onToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "fixedCosts",
+                patch: { enabled: next },
+              })
+            }
+            onCollapse={() =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "fixedCosts",
+                patch: { collapsed: !storeCategory.fixedCosts.collapsed },
+              })
+            }
+            onBundleToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "fixedCosts",
+                patch: { useBundle: next },
+              })
+            }
+            onAdvancedToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "fixedCosts",
+                patch: { showAdvanced: next },
+              })
+            }
+          >
+            <FieldsGroup
+              fields={FIXED_COST_FIELDS}
+              values={store.fixedCosts}
+              update={(field, value) =>
+                dispatch({
+                  type: "updateStoreField",
+                  section: "fixedCosts",
+                  field,
+                  value,
+                })
+              }
+              showAdvanced={!storeCategory.fixedCosts.useBundle && storeCategory.fixedCosts.showAdvanced}
+            />
+          </SectionCard>
+
+          <SectionCard
+            categoryKey="loss"
+            category={storeCategory.loss}
+            onToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "loss",
+                patch: { enabled: next },
+              })
+            }
+            onCollapse={() =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "loss",
+                patch: { collapsed: !storeCategory.loss.collapsed },
+              })
+            }
+            onBundleToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "loss",
+                patch: { useBundle: next },
+              })
+            }
+            onAdvancedToggle={(next) =>
+              dispatch({
+                type: "updateCategory",
+                categoryKey: "loss",
+                patch: { showAdvanced: next },
+              })
+            }
+          >
+            <FieldsGroup
+              fields={LOSS_FIELDS}
+              values={store.loss}
+              update={(field, value) =>
+                dispatch({
+                  type: "updateStoreField",
+                  section: "loss",
+                  field,
+                  value,
+                })
+              }
+              showAdvanced={!storeCategory.loss.useBundle && storeCategory.loss.showAdvanced}
+            />
+          </SectionCard>
+        </>
+      ) : null}
+
+      <div className="rounded-[28px] border border-[#d5ddda] bg-white/95 p-4 shadow-[0_12px_36px_rgba(22,52,46,0.06)]">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-[#173a33]">현재 설정 저장</p>
@@ -469,394 +875,6 @@ export function SettingsSidebar({
           </button>
         </div>
       </div>
-
-      <SectionCard
-        categoryKey="sales"
-        category={storeCategory.sales}
-        onToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "sales",
-            patch: { enabled: next },
-          })
-        }
-        onCollapse={() =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "sales",
-            patch: { collapsed: !storeCategory.sales.collapsed },
-          })
-        }
-      >
-        <FieldsGroup
-          fields={SALES_FIELDS}
-          values={store.sales}
-          update={(field, value) =>
-            dispatch({
-              type: "updateStoreField",
-              section: "sales",
-              field,
-              value,
-            })
-          }
-          showAdvanced
-        />
-      </SectionCard>
-
-      <SectionCard
-        categoryKey="menuSpec"
-        category={storeCategory.menuSpec}
-        onToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "menuSpec",
-            patch: { enabled: next },
-          })
-        }
-        onCollapse={() =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "menuSpec",
-            patch: { collapsed: !storeCategory.menuSpec.collapsed },
-          })
-        }
-        titleExtra={
-          <div className="rounded-2xl bg-[#f6faf8] px-3 py-3 text-sm text-[#56726c]">
-            메뉴별 컵 용량, 샷 수, 재료량, HOT/ICE 가격은 중앙의 메뉴 표에서 바로 수정합니다.
-          </div>
-        }
-      >
-        <div className="rounded-2xl border border-dashed border-[#cad5d1] px-3 py-3 text-sm text-[#607d76]">
-          판매 비중 합계 {store.menus.reduce((sum, menu) => sum + menu.share, 0).toFixed(1)}%
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        categoryKey="ingredients"
-        category={storeCategory.ingredients}
-        onToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "ingredients",
-            patch: { enabled: next },
-          })
-        }
-        onCollapse={() =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "ingredients",
-            patch: { collapsed: !storeCategory.ingredients.collapsed },
-          })
-        }
-        titleExtra={
-          <button
-            type="button"
-            onClick={() =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "ingredients",
-                patch: { showAdvanced: !storeCategory.ingredients.showAdvanced },
-              })
-            }
-            className="inline-flex items-center gap-2 rounded-full bg-[#eef4f2] px-3 py-2 text-xs font-semibold text-[#4f6b66]"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            고급 재료 {storeCategory.ingredients.showAdvanced ? "숨기기" : "보기"}
-          </button>
-        }
-      >
-        <PriceCatalogEditor
-          items={state.priceCatalog.ingredients}
-          showAdvanced={storeCategory.ingredients.showAdvanced}
-          onPriceChange={(itemId, value) =>
-            dispatch({
-              type: "updateCatalogItem",
-              catalog: "ingredients",
-              itemId,
-              patch: { pricePerUnit: value },
-            })
-          }
-          onToggle={(itemId, enabled) =>
-            dispatch({
-              type: "updateCatalogItem",
-              catalog: "ingredients",
-              itemId,
-              patch: { enabled },
-            })
-          }
-        />
-      </SectionCard>
-
-      <SectionCard
-        categoryKey="packaging"
-        category={storeCategory.packaging}
-        onToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "packaging",
-            patch: { enabled: next },
-          })
-        }
-        onCollapse={() =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "packaging",
-            patch: { collapsed: !storeCategory.packaging.collapsed },
-          })
-        }
-        titleExtra={
-          <button
-            type="button"
-            onClick={() =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "packaging",
-                patch: { showAdvanced: !storeCategory.packaging.showAdvanced },
-              })
-            }
-            className="inline-flex items-center gap-2 rounded-full bg-[#eef4f2] px-3 py-2 text-xs font-semibold text-[#4f6b66]"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            고급 포장 {storeCategory.packaging.showAdvanced ? "숨기기" : "보기"}
-          </button>
-        }
-      >
-        <PriceCatalogEditor
-          items={state.priceCatalog.packaging}
-          showAdvanced={storeCategory.packaging.showAdvanced}
-          onPriceChange={(itemId, value) =>
-            dispatch({
-              type: "updateCatalogItem",
-              catalog: "packaging",
-              itemId,
-              patch: { pricePerUnit: value },
-            })
-          }
-          onToggle={(itemId, enabled) =>
-            dispatch({
-              type: "updateCatalogItem",
-              catalog: "packaging",
-              itemId,
-              patch: { enabled },
-            })
-          }
-        />
-      </SectionCard>
-
-      <SectionCard
-        categoryKey="variableCosts"
-        category={storeCategory.variableCosts}
-        onToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "variableCosts",
-            patch: { enabled: next },
-          })
-        }
-        onCollapse={() =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "variableCosts",
-            patch: { collapsed: !storeCategory.variableCosts.collapsed },
-          })
-        }
-      >
-        <FieldsGroup
-          fields={VARIABLE_COST_FIELDS}
-          values={store.variableCosts}
-          update={(field, value) =>
-            dispatch({
-              type: "updateStoreField",
-              section: "variableCosts",
-              field,
-              value,
-            })
-          }
-          showAdvanced
-        />
-      </SectionCard>
-
-      <SectionCard
-        categoryKey="labor"
-        category={storeCategory.labor}
-        onToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "labor",
-            patch: { enabled: next },
-          })
-        }
-        onCollapse={() =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "labor",
-            patch: { collapsed: !storeCategory.labor.collapsed },
-          })
-        }
-        onBundleToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "labor",
-            patch: { useBundle: next },
-          })
-        }
-        onAdvancedToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "labor",
-            patch: { showAdvanced: next },
-          })
-        }
-      >
-        <FieldsGroup
-          fields={LABOR_FIELDS}
-          values={store.labor}
-          update={(field, value) =>
-            dispatch({
-              type: "updateStoreField",
-              section: "labor",
-              field,
-              value,
-            })
-          }
-          showAdvanced={!storeCategory.labor.useBundle && storeCategory.labor.showAdvanced}
-        />
-      </SectionCard>
-
-      <SectionCard
-        categoryKey="fixedCosts"
-        category={storeCategory.fixedCosts}
-        onToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "fixedCosts",
-            patch: { enabled: next },
-          })
-        }
-        onCollapse={() =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "fixedCosts",
-            patch: { collapsed: !storeCategory.fixedCosts.collapsed },
-          })
-        }
-        onBundleToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "fixedCosts",
-            patch: { useBundle: next },
-          })
-        }
-        onAdvancedToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "fixedCosts",
-            patch: { showAdvanced: next },
-          })
-        }
-      >
-        <FieldsGroup
-          fields={FIXED_COST_FIELDS}
-          values={store.fixedCosts}
-          update={(field, value) =>
-            dispatch({
-              type: "updateStoreField",
-              section: "fixedCosts",
-              field,
-              value,
-            })
-          }
-          showAdvanced={!storeCategory.fixedCosts.useBundle && storeCategory.fixedCosts.showAdvanced}
-        />
-      </SectionCard>
-
-      <SectionCard
-        categoryKey="loss"
-        category={storeCategory.loss}
-        onToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "loss",
-            patch: { enabled: next },
-          })
-        }
-        onCollapse={() =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "loss",
-            patch: { collapsed: !storeCategory.loss.collapsed },
-          })
-        }
-        onBundleToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "loss",
-            patch: { useBundle: next },
-          })
-        }
-        onAdvancedToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "loss",
-            patch: { showAdvanced: next },
-          })
-        }
-      >
-        <FieldsGroup
-          fields={LOSS_FIELDS}
-          values={store.loss}
-          update={(field, value) =>
-            dispatch({
-              type: "updateStoreField",
-              section: "loss",
-              field,
-              value,
-            })
-          }
-          showAdvanced={!storeCategory.loss.useBundle && storeCategory.loss.showAdvanced}
-        />
-      </SectionCard>
-
-      <SectionCard
-        categoryKey="tax"
-        category={storeCategory.tax}
-        onToggle={(next) =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "tax",
-            patch: { enabled: next },
-          })
-        }
-        onCollapse={() =>
-          dispatch({
-            type: "updateCategory",
-            categoryKey: "tax",
-            patch: { collapsed: !storeCategory.tax.collapsed },
-          })
-        }
-        titleExtra={
-          <div className="rounded-2xl bg-[#f6faf8] px-3 py-3 text-sm text-[#56726c]">
-            현재 기준은{" "}
-            <span className="font-semibold text-[#173a33]">
-              {state.wizard.vatMode === "inclusive" ? "부가세 포함가" : "부가세 별도가"}
-            </span>
-            입니다. 권장 판매가는 부가세 모드에 맞춰 자동 변환됩니다.
-          </div>
-        }
-      >
-        <div className="rounded-2xl border border-dashed border-[#cad5d1] px-3 py-3 text-sm text-[#607d76]">
-          현재 평균 판매가{" "}
-          {formatCurrency(
-            store.menus.reduce((sum, menu) => {
-              const variants = Object.values(menu.variants).filter(Boolean);
-              const avg =
-                variants.reduce((variantSum, variant) => variantSum + (variant?.price ?? 0), 0) /
-                Math.max(variants.length, 1);
-              return sum + avg;
-            }, 0) / Math.max(store.menus.length, 1),
-          )}
-        </div>
-      </SectionCard>
     </section>
   );
 }
