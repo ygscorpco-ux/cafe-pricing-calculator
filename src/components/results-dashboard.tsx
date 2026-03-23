@@ -8,20 +8,16 @@ import {
   ChevronDown,
   ChevronUp,
   Goal,
-  TrendingDown,
-  TrendingUp,
 } from "lucide-react";
 
 import { formatCompactCurrency, formatCurrency, formatPercent, statusTone } from "@/lib/format";
 import { cn, percentFromRatio, ratioFromPercentInput } from "@/lib/utils";
 import type { AppAction } from "@/lib/app-state";
-import type { AppCalculationResult, AppState, MenuState, StoreCalculationResult, Temperature } from "@/lib/types";
+import type { AppCalculationResult, AppState, MenuState, Temperature } from "@/lib/types";
 
 interface ResultsDashboardProps {
   state: AppState;
   result: AppCalculationResult;
-  selectedStore: AppState["stores"][number];
-  selectedStoreResult: StoreCalculationResult;
   dispatch: React.Dispatch<AppAction>;
 }
 
@@ -44,7 +40,12 @@ function KpiCard({
   } as const;
 
   return (
-    <article className={cn("rounded-[28px] border border-white/70 bg-gradient-to-br p-4 shadow-[0_14px_40px_rgba(22,52,46,0.08)]", accentMap[accent])}>
+    <article
+      className={cn(
+        "rounded-[28px] border border-white/70 bg-gradient-to-br p-4 shadow-[0_14px_40px_rgba(22,52,46,0.08)]",
+        accentMap[accent],
+      )}
+    >
       <p className="text-xs font-semibold uppercase tracking-[0.2em] opacity-70">{title}</p>
       <p className="mt-3 text-2xl font-semibold">{value}</p>
       <p className="mt-2 text-xs leading-5 opacity-75">{description}</p>
@@ -90,7 +91,12 @@ function NumberInput({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center rounded-2xl border border-[#d2dbd6] bg-white px-3", className)}>
+    <div
+      className={cn(
+        "flex items-center rounded-2xl border border-[#d2dbd6] bg-white px-3",
+        className,
+      )}
+    >
       <input
         type="number"
         value={Number.isFinite(value) ? value : 0}
@@ -145,13 +151,11 @@ function TemperaturePriceCell({
 
 function VariantEditor({
   menu,
-  selectedStoreId,
   dispatch,
   ingredientLabels,
   packagingLabels,
 }: {
   menu: MenuState;
-  selectedStoreId: string;
   dispatch: React.Dispatch<AppAction>;
   ingredientLabels: Map<string, string>;
   packagingLabels: Map<string, string>;
@@ -176,7 +180,6 @@ function VariantEditor({
                     onChange={(event) =>
                       dispatch({
                         type: "updateMenuVariantField",
-                        storeId: selectedStoreId,
                         menuId: menu.id,
                         temperature,
                         field: "enabled",
@@ -196,7 +199,6 @@ function VariantEditor({
                     onChange={(value) =>
                       dispatch({
                         type: "updateMenuVariantField",
-                        storeId: selectedStoreId,
                         menuId: menu.id,
                         temperature,
                         field: "price",
@@ -213,7 +215,6 @@ function VariantEditor({
                     onChange={(value) =>
                       dispatch({
                         type: "updateMenuVariantField",
-                        storeId: selectedStoreId,
                         menuId: menu.id,
                         temperature,
                         field: "cupSizeMl",
@@ -230,7 +231,6 @@ function VariantEditor({
                     onChange={(value) =>
                       dispatch({
                         type: "updateMenuVariantField",
-                        storeId: selectedStoreId,
                         menuId: menu.id,
                         temperature,
                         field: "shotCount",
@@ -260,7 +260,6 @@ function VariantEditor({
                         onChange={(value) =>
                           dispatch({
                             type: "updateMenuUsage",
-                            storeId: selectedStoreId,
                             menuId: menu.id,
                             temperature,
                             usageKind: "recipe",
@@ -294,7 +293,6 @@ function VariantEditor({
                         onChange={(value) =>
                           dispatch({
                             type: "updateMenuUsage",
-                            storeId: selectedStoreId,
                             menuId: menu.id,
                             temperature,
                             usageKind: "packaging",
@@ -316,14 +314,10 @@ function VariantEditor({
   );
 }
 
-export function ResultsDashboard({
-  state,
-  result,
-  selectedStore,
-  selectedStoreResult,
-  dispatch,
-}: ResultsDashboardProps) {
+export function ResultsDashboard({ state, result, dispatch }: ResultsDashboardProps) {
   const [expandedMenuId, setExpandedMenuId] = useState<string | null>(null);
+  const store = state.store;
+  const calculation = result.result;
   const tone = statusTone(result.feasibility.status);
   const ingredientLabels = useMemo(
     () => new Map(state.priceCatalog.ingredients.map((item) => [item.id, item.label])),
@@ -333,18 +327,18 @@ export function ResultsDashboard({
     () => new Map(state.priceCatalog.packaging.map((item) => [item.id, item.label])),
     [state.priceCatalog.packaging],
   );
-  const recommendedSummary = selectedStoreResult.menuResults
+  const recommendedSummary = calculation.menuResults
     .slice()
     .sort((left, right) => Math.abs(right.priceGap) - Math.abs(left.priceGap))
     .slice(0, 2);
   const biggestDriver = result.topCostDrivers[0];
   const costBase =
-    selectedStoreResult.monthlyDirectCost +
-    selectedStoreResult.monthlyPackagingCost +
-    selectedStoreResult.monthlyVariableCost +
-    selectedStoreResult.monthlyLossCost +
-    selectedStoreResult.monthlyLaborCost +
-    selectedStoreResult.monthlyFixedCost;
+    calculation.monthlyDirectCost +
+    calculation.monthlyPackagingCost +
+    calculation.monthlyVariableCost +
+    calculation.monthlyLossCost +
+    calculation.monthlyLaborCost +
+    calculation.monthlyFixedCost;
 
   return (
     <section className="space-y-5">
@@ -355,7 +349,7 @@ export function ResultsDashboard({
               결과 대시보드
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-[#16342e]">
-              {selectedStore.name} 기준 가격 설계
+              현재 기준 가격 설계
             </h2>
             <p className="mt-2 text-sm leading-6 text-[#5f7f78]">
               현재 손익과 목표 기준 추천가를 한 화면에서 같이 보면서 바로 수정할 수 있습니다.
@@ -425,7 +419,11 @@ export function ResultsDashboard({
                 : "0원"
             }
             description="가장 변동 폭이 큰 메뉴 기준입니다."
-            accent={recommendedSummary[0]?.priceGap && recommendedSummary[0].priceGap < 0 ? "sky" : "amber"}
+            accent={
+              recommendedSummary[0]?.priceGap && recommendedSummary[0].priceGap < 0
+                ? "sky"
+                : "amber"
+            }
           />
           <KpiCard
             title="목표 달성 가능 여부"
@@ -465,9 +463,7 @@ export function ResultsDashboard({
               </p>
               <NumberInput
                 value={state.targetMonthlyNetProfit}
-                onChange={(value) =>
-                  dispatch({ type: "setTargetMonthlyNetProfit", value })
-                }
+                onChange={(value) => dispatch({ type: "setTargetMonthlyNetProfit", value })}
                 suffix="원"
               />
             </div>
@@ -494,7 +490,7 @@ export function ResultsDashboard({
                 필요 객단가
               </p>
               <p className="mt-2 text-xl font-semibold text-[#16314e]">
-                {formatCompactCurrency(selectedStoreResult.requiredAverageTicket)}
+                {formatCompactCurrency(calculation.requiredAverageTicket)}
               </p>
             </div>
           </div>
@@ -509,83 +505,42 @@ export function ResultsDashboard({
         <div className="mt-4 grid gap-3">
           <MetricBar
             label="직접 원재료비"
-            amount={selectedStoreResult.monthlyDirectCost}
+            amount={calculation.monthlyDirectCost}
             total={costBase}
             tone="bg-[#2c8d78]"
           />
           <MetricBar
             label="포장재"
-            amount={selectedStoreResult.monthlyPackagingCost}
+            amount={calculation.monthlyPackagingCost}
             total={costBase}
             tone="bg-[#49a78a]"
           />
           <MetricBar
             label="변동비"
-            amount={selectedStoreResult.monthlyVariableCost}
+            amount={calculation.monthlyVariableCost}
             total={costBase}
             tone="bg-[#e29b35]"
           />
           <MetricBar
             label="로스/폐기"
-            amount={selectedStoreResult.monthlyLossCost}
+            amount={calculation.monthlyLossCost}
             total={costBase}
             tone="bg-[#efb94f]"
           />
           <MetricBar
             label="인건비"
-            amount={selectedStoreResult.monthlyLaborCost}
+            amount={calculation.monthlyLaborCost}
             total={costBase}
             tone="bg-[#d96552]"
           />
           <MetricBar
             label="고정비"
-            amount={selectedStoreResult.monthlyFixedCost}
+            amount={calculation.monthlyFixedCost}
             total={costBase}
             tone="bg-[#9a5e54]"
           />
         </div>
       </div>
-
-      {result.storeResults.length > 1 ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {result.storeResults.map((storeResult) => (
-            <button
-              type="button"
-              key={storeResult.storeId}
-              onClick={() => dispatch({ type: "selectStore", storeId: storeResult.storeId })}
-              className={cn(
-                "rounded-[24px] border p-4 text-left shadow-[0_14px_36px_rgba(22,52,46,0.06)] transition",
-                storeResult.storeId === state.selectedStoreId
-                  ? "border-[#173a33] bg-[#f4faf7]"
-                  : "border-[#d7dfdb] bg-white",
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-[#173a33]">{storeResult.name}</h3>
-                {storeResult.monthlyNetProfit >= 0 ? (
-                  <TrendingUp className="h-4 w-4 text-[#2b8f76]" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 text-[#d66852]" />
-                )}
-              </div>
-              <dl className="mt-3 grid grid-cols-2 gap-3 text-sm text-[#4f6a64]">
-                <div>
-                  <dt>월 순수익</dt>
-                  <dd className="mt-1 font-semibold text-[#173a33]">
-                    {formatCompactCurrency(storeResult.monthlyNetProfit)}
-                  </dd>
-                </div>
-                <div>
-                  <dt>필요 객단가</dt>
-                  <dd className="mt-1 font-semibold text-[#173a33]">
-                    {formatCompactCurrency(storeResult.requiredAverageTicket)}
-                  </dd>
-                </div>
-              </dl>
-            </button>
-          ))}
-        </div>
-      ) : null}
 
       <div className="rounded-[28px] border border-[#d5ddd9] bg-white/95 p-5 shadow-[0_16px_48px_rgba(22,52,46,0.06)]">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -596,7 +551,7 @@ export function ResultsDashboard({
             </p>
           </div>
           <div className="rounded-full bg-[#eef4f2] px-4 py-2 text-xs font-semibold text-[#44635d]">
-            판매 비중 합계 {selectedStore.menus.reduce((sum, menu) => sum + menu.share, 0).toFixed(1)}%
+            판매 비중 합계 {store.menus.reduce((sum, menu) => sum + menu.share, 0).toFixed(1)}%
           </div>
         </div>
 
@@ -618,8 +573,8 @@ export function ResultsDashboard({
               </tr>
             </thead>
             <tbody>
-              {selectedStoreResult.menuResults.map((menuResult) => {
-                const menu = selectedStore.menus.find((item) => item.id === menuResult.menuId);
+              {calculation.menuResults.map((menuResult) => {
+                const menu = store.menus.find((item) => item.id === menuResult.menuId);
                 if (!menu) {
                   return null;
                 }
@@ -628,9 +583,7 @@ export function ResultsDashboard({
 
                 return (
                   <Fragment key={menu.id}>
-                    <tr
-                      className="rounded-3xl bg-[#f8fbfa] text-sm text-[#203d37] shadow-[0_10px_24px_rgba(22,52,46,0.04)]"
-                    >
+                    <tr className="rounded-3xl bg-[#f8fbfa] text-sm text-[#203d37] shadow-[0_10px_24px_rgba(22,52,46,0.04)]">
                       <td className="rounded-l-3xl px-4 py-4">
                         <button
                           type="button"
@@ -656,7 +609,6 @@ export function ResultsDashboard({
                           onChange={(value) =>
                             dispatch({
                               type: "updateMenuField",
-                              storeId: selectedStore.id,
                               menuId: menu.id,
                               field: "share",
                               value,
@@ -672,7 +624,6 @@ export function ResultsDashboard({
                             onChange={(value) =>
                               dispatch({
                                 type: "updateMenuField",
-                                storeId: selectedStore.id,
                                 menuId: menu.id,
                                 field: "hotShare",
                                 value: ratioFromPercentInput(value),
@@ -693,7 +644,6 @@ export function ResultsDashboard({
                           onChange={(temperature, value) =>
                             dispatch({
                               type: "updateMenuVariantField",
-                              storeId: selectedStore.id,
                               menuId: menu.id,
                               temperature,
                               field: "price",
@@ -752,7 +702,6 @@ export function ResultsDashboard({
                         <td colSpan={11} className="px-2 pb-2 pt-1">
                           <VariantEditor
                             menu={menu}
-                            selectedStoreId={selectedStore.id}
                             dispatch={dispatch}
                             ingredientLabels={ingredientLabels}
                             packagingLabels={packagingLabels}

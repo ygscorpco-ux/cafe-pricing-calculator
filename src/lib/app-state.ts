@@ -1,5 +1,4 @@
-import { buildInitialState, duplicateStore, rebaseStateFromTemplate } from "@/lib/seeds";
-import { createId, deepClone } from "@/lib/utils";
+import { buildInitialState, rebaseStateFromTemplate } from "@/lib/seeds";
 import type { AppState, CategoryKey, PriceCatalogItem, Temperature } from "@/lib/types";
 
 type StoreNumericSection =
@@ -16,31 +15,51 @@ export type AppAction =
   | { type: "completeWizard" }
   | { type: "setAnalysisMode"; mode: AppState["analysisMode"] }
   | { type: "setTargetMonthlyNetProfit"; value: number }
-  | { type: "selectStore"; storeId: string }
   | { type: "setSalesBasis"; value: AppState["wizard"]["salesBasis"] }
-  | { type: "setStoreMode"; value: AppState["wizard"]["storeMode"] }
   | { type: "setVatMode"; value: AppState["wizard"]["vatMode"] }
   | { type: "applyTemplate"; templateId: string }
-  | { type: "updateCategory"; storeId: string; categoryKey: CategoryKey; patch: Partial<AppState["stores"][number]["categories"][CategoryKey]> }
-  | { type: "updateStoreField"; storeId: string; section: StoreNumericSection; field: string; value: number }
-  | { type: "updateCatalogItem"; catalog: "ingredients" | "packaging"; itemId: string; patch: Partial<PriceCatalogItem> }
-  | { type: "updateMenuField"; storeId: string; menuId: string; field: "share" | "hotShare"; value: number }
-  | { type: "updateMenuVariantField"; storeId: string; menuId: string; temperature: Temperature; field: MenuVariantField; value: number | boolean }
-  | { type: "updateMenuUsage"; storeId: string; menuId: string; temperature: Temperature; usageKind: "recipe" | "packaging"; itemId: string; value: number }
-  | { type: "addStore" }
-  | { type: "duplicateStore"; storeId: string }
-  | { type: "removeStore"; storeId: string }
-  | { type: "applyStoreToAll"; storeId: string }
+  | {
+      type: "updateCategory";
+      categoryKey: CategoryKey;
+      patch: Partial<AppState["store"]["categories"][CategoryKey]>;
+    }
+  | {
+      type: "updateStoreField";
+      section: StoreNumericSection;
+      field: string;
+      value: number;
+    }
+  | {
+      type: "updateCatalogItem";
+      catalog: "ingredients" | "packaging";
+      itemId: string;
+      patch: Partial<PriceCatalogItem>;
+    }
+  | { type: "updateMenuField"; menuId: string; field: "share" | "hotShare"; value: number }
+  | {
+      type: "updateMenuVariantField";
+      menuId: string;
+      temperature: Temperature;
+      field: MenuVariantField;
+      value: number | boolean;
+    }
+  | {
+      type: "updateMenuUsage";
+      menuId: string;
+      temperature: Temperature;
+      usageKind: "recipe" | "packaging";
+      itemId: string;
+      value: number;
+    }
   | { type: "resetState" };
 
 function updateStore(
   state: AppState,
-  storeId: string,
-  updater: (store: AppState["stores"][number]) => AppState["stores"][number],
+  updater: (store: AppState["store"]) => AppState["store"],
 ) {
   return {
     ...state,
-    stores: state.stores.map((store) => (store.id === storeId ? updater(store) : store)),
+    store: updater(state.store),
   };
 }
 
@@ -64,36 +83,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, analysisMode: action.mode };
     case "setTargetMonthlyNetProfit":
       return { ...state, targetMonthlyNetProfit: Math.max(0, action.value) };
-    case "selectStore":
-      return { ...state, selectedStoreId: action.storeId };
     case "setSalesBasis":
       return {
         ...state,
         wizard: { ...state.wizard, salesBasis: action.value },
       };
-    case "setStoreMode": {
-      if (action.value === state.wizard.storeMode) {
-        return state;
-      }
-
-      if (action.value === "single") {
-        const firstStore = state.stores[0];
-        return {
-          ...state,
-          wizard: { ...state.wizard, storeMode: action.value },
-          stores: [firstStore],
-          selectedStoreId: firstStore.id,
-        };
-      }
-
-      const secondStore = duplicateStore(state.stores[0]);
-      secondStore.name = "매장 2";
-      return {
-        ...state,
-        wizard: { ...state.wizard, storeMode: action.value },
-        stores: [...state.stores, secondStore],
-      };
-    }
     case "setVatMode":
       return {
         ...state,
@@ -102,7 +96,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "applyTemplate":
       return rebaseStateFromTemplate(state, action.templateId);
     case "updateCategory":
-      return updateStore(state, action.storeId, (store) => ({
+      return updateStore(state, (store) => ({
         ...store,
         categories: {
           ...store.categories,
@@ -113,7 +107,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         },
       }));
     case "updateStoreField":
-      return updateStore(state, action.storeId, (store) => ({
+      return updateStore(state, (store) => ({
         ...store,
         [action.section]: {
           ...store[action.section],
@@ -131,14 +125,14 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         },
       };
     case "updateMenuField":
-      return updateStore(state, action.storeId, (store) => ({
+      return updateStore(state, (store) => ({
         ...store,
         menus: store.menus.map((menu) =>
           menu.id === action.menuId ? { ...menu, [action.field]: action.value } : menu,
         ),
       }));
     case "updateMenuVariantField":
-      return updateStore(state, action.storeId, (store) => ({
+      return updateStore(state, (store) => ({
         ...store,
         menus: store.menus.map((menu) => {
           if (menu.id !== action.menuId) {
@@ -163,7 +157,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         }),
       }));
     case "updateMenuUsage":
-      return updateStore(state, action.storeId, (store) => ({
+      return updateStore(state, (store) => ({
         ...store,
         menus: store.menus.map((menu) => {
           if (menu.id !== action.menuId) {
@@ -198,76 +192,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           };
         }),
       }));
-    case "addStore": {
-      const newStore = duplicateStore(state.stores[state.stores.length - 1]);
-      newStore.id = createId("store");
-      newStore.name = `매장 ${state.stores.length + 1}`;
-      return {
-        ...state,
-        wizard: { ...state.wizard, storeMode: "multi" },
-        stores: [...state.stores, newStore],
-        selectedStoreId: newStore.id,
-      };
-    }
-    case "duplicateStore": {
-      const source = state.stores.find((store) => store.id === action.storeId);
-      if (!source) {
-        return state;
-      }
-
-      const copy = duplicateStore(source);
-      copy.name = `매장 ${state.stores.length + 1}`;
-      return {
-        ...state,
-        wizard: { ...state.wizard, storeMode: "multi" },
-        stores: [...state.stores, copy],
-        selectedStoreId: copy.id,
-      };
-    }
-    case "removeStore": {
-      if (state.stores.length <= 1) {
-        return state;
-      }
-
-      const nextStores = state.stores.filter((store) => store.id !== action.storeId);
-      const nextSelectedId =
-        state.selectedStoreId === action.storeId
-          ? nextStores[0]?.id ?? state.selectedStoreId
-          : state.selectedStoreId;
-
-      return {
-        ...state,
-        wizard: {
-          ...state.wizard,
-          storeMode: nextStores.length > 1 ? "multi" : "single",
-        },
-        stores: nextStores,
-        selectedStoreId: nextSelectedId,
-      };
-    }
-    case "applyStoreToAll": {
-      const source = state.stores.find((store) => store.id === action.storeId);
-      if (!source) {
-        return state;
-      }
-
-      return {
-        ...state,
-        stores: state.stores.map((store, index) =>
-          store.id === source.id
-            ? store
-            : {
-                ...deepClone(source),
-                id: store.id,
-                name: `매장 ${index + 1}`,
-              },
-        ),
-      };
-    }
     case "resetState":
       return buildInitialState({
         salesBasis: state.wizard.salesBasis,
-        storeMode: state.wizard.storeMode,
         vatMode: state.wizard.vatMode,
         templateId: state.wizard.templateId,
       });

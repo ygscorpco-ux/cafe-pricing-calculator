@@ -1,15 +1,7 @@
 "use client";
 
-import {
-  ChevronDown,
-  ChevronUp,
-  Copy,
-  Plus,
-  RotateCcw,
-  Sparkles,
-  Store,
-  Trash2,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, CircleHelp, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 
 import {
   CATEGORY_META,
@@ -27,7 +19,7 @@ import type { AppState, CategoryKey, FieldDefinition, PriceCatalogItem } from "@
 
 interface SettingsSidebarProps {
   state: AppState;
-  selectedStore: AppState["stores"][number];
+  store: AppState["store"];
   dispatch: React.Dispatch<AppAction>;
   onSaveScenario: () => void;
   onLoadScenario: (scenarioId: string) => void;
@@ -90,6 +82,45 @@ function ToggleSwitch({
   );
 }
 
+function HelpTooltip({ content }: { content: string }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-label="도움말 보기"
+        aria-expanded={open}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#eaf1ef] text-[#55736d] transition hover:bg-[#dde9e5]"
+      >
+        <CircleHelp className="h-3 w-3" />
+      </button>
+      {open ? (
+        <div className="absolute left-0 top-6 z-20 w-56 rounded-2xl border border-[#d7e0dc] bg-white p-3 text-[11px] leading-5 text-[#486660] shadow-[0_14px_30px_rgba(22,52,46,0.12)]">
+          {content}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function FieldInput({
   label,
   description,
@@ -106,20 +137,16 @@ function FieldInput({
   onChange: (nextValue: number) => void;
 }) {
   const displayValue = kind === "percent" ? percentFromRatio(value) : value;
+  const showHeader = Boolean(label) || Boolean(description);
 
   return (
     <label className="block">
-      <div className="mb-1.5 flex items-center gap-1 text-xs font-medium text-[#5d7a74]">
-        <span>{label}</span>
-        {description ? (
-          <span
-            title={description}
-            className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#eaf1ef] text-[10px] text-[#55736d]"
-          >
-            ?
-          </span>
-        ) : null}
-      </div>
+      {showHeader ? (
+        <div className="mb-1.5 flex items-center gap-1 text-xs font-medium text-[#5d7a74]">
+          {label ? <span>{label}</span> : null}
+          {description ? <HelpTooltip content={description} /> : null}
+        </div>
+      ) : null}
       <div className="flex items-center rounded-2xl border border-[#d5ddda] bg-white px-3">
         <input
           type="number"
@@ -149,7 +176,7 @@ function SectionCard({
   children,
 }: {
   categoryKey: CategoryKey;
-  category: AppState["stores"][number]["categories"][CategoryKey];
+  category: AppState["store"]["categories"][CategoryKey];
   titleExtra?: React.ReactNode;
   onToggle: (next: boolean) => void;
   onCollapse: () => void;
@@ -285,14 +312,14 @@ function FieldsGroup<T extends string>({
 
 export function SettingsSidebar({
   state,
-  selectedStore,
+  store,
   dispatch,
   onSaveScenario,
   onLoadScenario,
   onDeleteScenario,
   savedScenarioOptions,
 }: SettingsSidebarProps) {
-  const storeCategory = selectedStore.categories;
+  const storeCategory = store.categories;
 
   return (
     <section className="space-y-4 xl:sticky xl:top-6">
@@ -302,9 +329,7 @@ export function SettingsSidebar({
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#5f7f78]">
               Quick Start
             </p>
-            <h2 className="mt-2 text-lg font-semibold text-[#16342e]">
-              3분 안에 결과 보기
-            </h2>
+            <h2 className="mt-2 text-lg font-semibold text-[#16342e]">3분 안에 결과 보기</h2>
           </div>
           <button
             type="button"
@@ -332,26 +357,6 @@ export function SettingsSidebar({
                 onClick={() => dispatch({ type: "setSalesBasis", value: "annual" })}
               >
                 연매출 기준
-              </SegmentButton>
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#67847e]">
-              매장 수
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <SegmentButton
-                active={state.wizard.storeMode === "single"}
-                onClick={() => dispatch({ type: "setStoreMode", value: "single" })}
-              >
-                단일매장
-              </SegmentButton>
-              <SegmentButton
-                active={state.wizard.storeMode === "multi"}
-                onClick={() => dispatch({ type: "setStoreMode", value: "multi" })}
-              >
-                복수매장
               </SegmentButton>
             </div>
           </div>
@@ -404,73 +409,6 @@ export function SettingsSidebar({
               ))}
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="rounded-[28px] border border-[#d5ddda] bg-white/95 p-4 shadow-[0_12px_36px_rgba(22,52,46,0.06)]">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-[#173a33]">
-            <Store className="h-4 w-4" />
-            매장 선택
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "duplicateStore", storeId: selectedStore.id })}
-              className="rounded-full bg-[#eef4f2] p-2 text-[#4f6a64]"
-              title="선택 매장 복제"
-            >
-              <Copy className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "addStore" })}
-              className="rounded-full bg-[#eef4f2] p-2 text-[#4f6a64]"
-              title="매장 추가"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {state.stores.map((store) => (
-            <button
-              key={store.id}
-              type="button"
-              onClick={() => dispatch({ type: "selectStore", storeId: store.id })}
-              className={cn(
-                "rounded-full px-3 py-2 text-xs font-semibold transition",
-                state.selectedStoreId === store.id
-                  ? "bg-[#173a33] text-white"
-                  : "bg-[#eef4f2] text-[#4f6c66]",
-              )}
-            >
-              {store.name}
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {state.stores.length > 1 ? (
-            <>
-              <button
-                type="button"
-                onClick={() => dispatch({ type: "applyStoreToAll", storeId: selectedStore.id })}
-                className="rounded-full bg-[#fff2db] px-3 py-2 text-xs font-semibold text-[#815715]"
-              >
-                현재 매장 설정 전체 적용
-              </button>
-              <button
-                type="button"
-                onClick={() => dispatch({ type: "removeStore", storeId: selectedStore.id })}
-                className="rounded-full bg-[#ffe8e4] px-3 py-2 text-xs font-semibold text-[#a24336]"
-              >
-                <span className="inline-flex items-center gap-1">
-                  <Trash2 className="h-3.5 w-3.5" />
-                  선택 매장 삭제
-                </span>
-              </button>
-            </>
-          ) : null}
         </div>
       </div>
 
@@ -538,7 +476,6 @@ export function SettingsSidebar({
         onToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "sales",
             patch: { enabled: next },
           })
@@ -546,7 +483,6 @@ export function SettingsSidebar({
         onCollapse={() =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "sales",
             patch: { collapsed: !storeCategory.sales.collapsed },
           })
@@ -554,11 +490,10 @@ export function SettingsSidebar({
       >
         <FieldsGroup
           fields={SALES_FIELDS}
-          values={selectedStore.sales}
+          values={store.sales}
           update={(field, value) =>
             dispatch({
               type: "updateStoreField",
-              storeId: selectedStore.id,
               section: "sales",
               field,
               value,
@@ -574,7 +509,6 @@ export function SettingsSidebar({
         onToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "menuSpec",
             patch: { enabled: next },
           })
@@ -582,7 +516,6 @@ export function SettingsSidebar({
         onCollapse={() =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "menuSpec",
             patch: { collapsed: !storeCategory.menuSpec.collapsed },
           })
@@ -594,7 +527,7 @@ export function SettingsSidebar({
         }
       >
         <div className="rounded-2xl border border-dashed border-[#cad5d1] px-3 py-3 text-sm text-[#607d76]">
-          판매 비중 합계 {selectedStore.menus.reduce((sum, menu) => sum + menu.share, 0).toFixed(1)}%
+          판매 비중 합계 {store.menus.reduce((sum, menu) => sum + menu.share, 0).toFixed(1)}%
         </div>
       </SectionCard>
 
@@ -604,7 +537,6 @@ export function SettingsSidebar({
         onToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "ingredients",
             patch: { enabled: next },
           })
@@ -612,7 +544,6 @@ export function SettingsSidebar({
         onCollapse={() =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "ingredients",
             patch: { collapsed: !storeCategory.ingredients.collapsed },
           })
@@ -623,7 +554,6 @@ export function SettingsSidebar({
             onClick={() =>
               dispatch({
                 type: "updateCategory",
-                storeId: selectedStore.id,
                 categoryKey: "ingredients",
                 patch: { showAdvanced: !storeCategory.ingredients.showAdvanced },
               })
@@ -663,7 +593,6 @@ export function SettingsSidebar({
         onToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "packaging",
             patch: { enabled: next },
           })
@@ -671,7 +600,6 @@ export function SettingsSidebar({
         onCollapse={() =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "packaging",
             patch: { collapsed: !storeCategory.packaging.collapsed },
           })
@@ -682,7 +610,6 @@ export function SettingsSidebar({
             onClick={() =>
               dispatch({
                 type: "updateCategory",
-                storeId: selectedStore.id,
                 categoryKey: "packaging",
                 patch: { showAdvanced: !storeCategory.packaging.showAdvanced },
               })
@@ -722,7 +649,6 @@ export function SettingsSidebar({
         onToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "variableCosts",
             patch: { enabled: next },
           })
@@ -730,7 +656,6 @@ export function SettingsSidebar({
         onCollapse={() =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "variableCosts",
             patch: { collapsed: !storeCategory.variableCosts.collapsed },
           })
@@ -738,11 +663,10 @@ export function SettingsSidebar({
       >
         <FieldsGroup
           fields={VARIABLE_COST_FIELDS}
-          values={selectedStore.variableCosts}
+          values={store.variableCosts}
           update={(field, value) =>
             dispatch({
               type: "updateStoreField",
-              storeId: selectedStore.id,
               section: "variableCosts",
               field,
               value,
@@ -758,7 +682,6 @@ export function SettingsSidebar({
         onToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "labor",
             patch: { enabled: next },
           })
@@ -766,7 +689,6 @@ export function SettingsSidebar({
         onCollapse={() =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "labor",
             patch: { collapsed: !storeCategory.labor.collapsed },
           })
@@ -774,7 +696,6 @@ export function SettingsSidebar({
         onBundleToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "labor",
             patch: { useBundle: next },
           })
@@ -782,7 +703,6 @@ export function SettingsSidebar({
         onAdvancedToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "labor",
             patch: { showAdvanced: next },
           })
@@ -790,11 +710,10 @@ export function SettingsSidebar({
       >
         <FieldsGroup
           fields={LABOR_FIELDS}
-          values={selectedStore.labor}
+          values={store.labor}
           update={(field, value) =>
             dispatch({
               type: "updateStoreField",
-              storeId: selectedStore.id,
               section: "labor",
               field,
               value,
@@ -810,7 +729,6 @@ export function SettingsSidebar({
         onToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "fixedCosts",
             patch: { enabled: next },
           })
@@ -818,7 +736,6 @@ export function SettingsSidebar({
         onCollapse={() =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "fixedCosts",
             patch: { collapsed: !storeCategory.fixedCosts.collapsed },
           })
@@ -826,7 +743,6 @@ export function SettingsSidebar({
         onBundleToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "fixedCosts",
             patch: { useBundle: next },
           })
@@ -834,7 +750,6 @@ export function SettingsSidebar({
         onAdvancedToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "fixedCosts",
             patch: { showAdvanced: next },
           })
@@ -842,11 +757,10 @@ export function SettingsSidebar({
       >
         <FieldsGroup
           fields={FIXED_COST_FIELDS}
-          values={selectedStore.fixedCosts}
+          values={store.fixedCosts}
           update={(field, value) =>
             dispatch({
               type: "updateStoreField",
-              storeId: selectedStore.id,
               section: "fixedCosts",
               field,
               value,
@@ -862,7 +776,6 @@ export function SettingsSidebar({
         onToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "loss",
             patch: { enabled: next },
           })
@@ -870,7 +783,6 @@ export function SettingsSidebar({
         onCollapse={() =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "loss",
             patch: { collapsed: !storeCategory.loss.collapsed },
           })
@@ -878,7 +790,6 @@ export function SettingsSidebar({
         onBundleToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "loss",
             patch: { useBundle: next },
           })
@@ -886,7 +797,6 @@ export function SettingsSidebar({
         onAdvancedToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "loss",
             patch: { showAdvanced: next },
           })
@@ -894,11 +804,10 @@ export function SettingsSidebar({
       >
         <FieldsGroup
           fields={LOSS_FIELDS}
-          values={selectedStore.loss}
+          values={store.loss}
           update={(field, value) =>
             dispatch({
               type: "updateStoreField",
-              storeId: selectedStore.id,
               section: "loss",
               field,
               value,
@@ -914,7 +823,6 @@ export function SettingsSidebar({
         onToggle={(next) =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "tax",
             patch: { enabled: next },
           })
@@ -922,7 +830,6 @@ export function SettingsSidebar({
         onCollapse={() =>
           dispatch({
             type: "updateCategory",
-            storeId: selectedStore.id,
             categoryKey: "tax",
             patch: { collapsed: !storeCategory.tax.collapsed },
           })
@@ -938,15 +845,15 @@ export function SettingsSidebar({
         }
       >
         <div className="rounded-2xl border border-dashed border-[#cad5d1] px-3 py-3 text-sm text-[#607d76]">
-          선택한 매장 현재 평균 판매가{" "}
+          현재 평균 판매가{" "}
           {formatCurrency(
-            selectedStore.menus.reduce((sum, menu) => {
+            store.menus.reduce((sum, menu) => {
               const variants = Object.values(menu.variants).filter(Boolean);
               const avg =
                 variants.reduce((variantSum, variant) => variantSum + (variant?.price ?? 0), 0) /
                 Math.max(variants.length, 1);
               return sum + avg;
-            }, 0) / Math.max(selectedStore.menus.length, 1),
+            }, 0) / Math.max(store.menus.length, 1),
           )}
         </div>
       </SectionCard>

@@ -3,14 +3,13 @@ import {
   DEFAULT_TARGET_MONTHLY_NET_PROFIT,
   TEMPLATES,
 } from "@/lib/constants";
-import { createId, deepClone } from "@/lib/utils";
+import { deepClone } from "@/lib/utils";
 import type {
   AppState,
   CategoryKey,
   CategoryState,
   MenuState,
   PriceCatalogItem,
-  StoreMode,
   StoreState,
   TemplateDefinition,
   VatMode,
@@ -29,9 +28,29 @@ const BASE_INGREDIENT_CATALOG: PriceCatalogItem[] = [
   { id: "citrusBase", label: "귤/청귤청", unit: "ml", pricePerUnit: 18, enabled: true },
   { id: "water", label: "물", unit: "ml", pricePerUnit: 0.25, enabled: true },
   { id: "ice", label: "얼음", unit: "g", pricePerUnit: 0.9, enabled: true },
-  { id: "whippingCream", label: "휘핑", unit: "ml", pricePerUnit: 28, enabled: true, advanced: true },
-  { id: "toppingPowder", label: "토핑/파우더", unit: "g", pricePerUnit: 22, enabled: true, advanced: true },
-  { id: "otherIngredientBundle", label: "기타 식재료 묶음", unit: "ea", pricePerUnit: 120, enabled: true },
+  {
+    id: "whippingCream",
+    label: "휘핑",
+    unit: "ml",
+    pricePerUnit: 28,
+    enabled: true,
+    advanced: true,
+  },
+  {
+    id: "toppingPowder",
+    label: "토핑/파우더",
+    unit: "g",
+    pricePerUnit: 22,
+    enabled: true,
+    advanced: true,
+  },
+  {
+    id: "otherIngredientBundle",
+    label: "기타 식재료 묶음",
+    unit: "ea",
+    pricePerUnit: 120,
+    enabled: true,
+  },
 ];
 
 const BASE_PACKAGING_CATALOG: PriceCatalogItem[] = [
@@ -43,7 +62,14 @@ const BASE_PACKAGING_CATALOG: PriceCatalogItem[] = [
   { id: "carrier", label: "캐리어", unit: "ea", pricePerUnit: 140, enabled: true },
   { id: "napkin", label: "냅킨", unit: "ea", pricePerUnit: 8, enabled: true },
   { id: "labelSticker", label: "라벨", unit: "ea", pricePerUnit: 6, enabled: true },
-  { id: "vinylBag", label: "비닐봉투", unit: "ea", pricePerUnit: 30, enabled: true, advanced: true },
+  {
+    id: "vinylBag",
+    label: "비닐봉투",
+    unit: "ea",
+    pricePerUnit: 30,
+    enabled: true,
+    advanced: true,
+  },
 ];
 
 const HOT_PACKAGING = [
@@ -385,7 +411,7 @@ function createCategoryState(key: CategoryKey): CategoryState {
   };
 }
 
-function createBaseStore(name: string) {
+function createBaseStore(): StoreState {
   const categories = Object.fromEntries(
     (Object.keys(CATEGORY_META) as CategoryKey[]).map((key) => [
       key,
@@ -394,8 +420,6 @@ function createBaseStore(name: string) {
   ) as StoreState["categories"];
 
   return {
-    id: createId("store"),
-    name,
     sales: {
       monthlySales: 36_000_000,
       annualSales: 432_000_000,
@@ -448,7 +472,7 @@ function createBaseStore(name: string) {
     },
     categories,
     menus: deepClone(BASE_MENUS),
-  } satisfies StoreState;
+  };
 }
 
 function applyPriceMultiplier(menus: MenuState[], multiplier: number) {
@@ -475,17 +499,17 @@ function applyCatalogMultiplier(items: PriceCatalogItem[], multiplier: number) {
   }));
 }
 
-function applyTemplateToStore(store: StoreState, templateId: string, index: number) {
+function applyTemplateToStore(store: StoreState, templateId: string) {
   const next = deepClone(store);
 
   switch (templateId) {
     case "takeout":
-      next.sales.monthlySales = 31_000_000 + index * 2_200_000;
+      next.sales.monthlySales = 31_000_000;
       next.sales.annualSales = next.sales.monthlySales * 12;
       next.sales.averageTicket = 4_900;
-      next.sales.visitorsPerDay = 275 + index * 12;
+      next.sales.visitorsPerDay = 275;
       next.sales.takeoutRatio = 0.82;
-      next.fixedCosts.monthlyRent = 2_200_000 + index * 180_000;
+      next.fixedCosts.monthlyRent = 2_200_000;
       next.fixedCosts.utilitiesBundle = 510_000;
       next.fixedCosts.operationsBundle = 360_000;
       next.fixedCosts.suppliesBundle = 270_000;
@@ -493,73 +517,59 @@ function applyTemplateToStore(store: StoreState, templateId: string, index: numb
       next.menus = applyPriceMultiplier(next.menus, 0.97);
       break;
     case "mid-range":
-      next.sales.monthlySales = 45_000_000 + index * 4_500_000;
+      next.sales.monthlySales = 45_000_000;
       next.sales.annualSales = next.sales.monthlySales * 12;
       next.sales.averageTicket = 6_100;
-      next.sales.visitorsPerDay = 265 + index * 15;
+      next.sales.visitorsPerDay = 265;
       next.sales.takeoutRatio = 0.54;
-      next.fixedCosts.monthlyRent = 3_200_000 + index * 250_000;
+      next.fixedCosts.monthlyRent = 3_200_000;
       next.fixedCosts.marketingCost = 320_000;
-      next.labor.salariedPayroll = 4_700_000 + index * 200_000;
+      next.labor.salariedPayroll = 4_700_000;
       next.menus = applyPriceMultiplier(next.menus, 1.08);
       break;
     case "premium":
-      next.sales.monthlySales = 62_000_000 + index * 7_000_000;
+      next.sales.monthlySales = 62_000_000;
       next.sales.annualSales = next.sales.monthlySales * 12;
       next.sales.averageTicket = 7_600;
-      next.sales.visitorsPerDay = 300 + index * 18;
+      next.sales.visitorsPerDay = 300;
       next.sales.takeoutRatio = 0.46;
-      next.fixedCosts.monthlyRent = 4_500_000 + index * 350_000;
+      next.fixedCosts.monthlyRent = 4_500_000;
       next.fixedCosts.utilitiesBundle = 840_000;
       next.fixedCosts.operationsBundle = 640_000;
-      next.labor.salariedPayroll = 5_500_000 + index * 350_000;
-      next.labor.partTimeMonthlyPayroll = 4_100_000 + index * 250_000;
+      next.labor.salariedPayroll = 5_500_000;
+      next.labor.partTimeMonthlyPayroll = 4_100_000;
       next.menus = applyPriceMultiplier(next.menus, 1.18);
       break;
     case "basic-cafe":
     default:
-      next.sales.monthlySales = 36_000_000 + index * 3_200_000;
+      next.sales.monthlySales = 36_000_000;
       next.sales.annualSales = next.sales.monthlySales * 12;
       next.sales.averageTicket = 5_400;
-      next.sales.visitorsPerDay = 250 + index * 10;
+      next.sales.visitorsPerDay = 250;
       next.sales.takeoutRatio = 0.58;
       next.menus = applyPriceMultiplier(next.menus, 1);
       break;
   }
 
-  next.name = `매장 ${index + 1}`;
   return next;
-}
-
-function buildStores(storeMode: StoreMode, templateId: string) {
-  const count = storeMode === "multi" ? 2 : 1;
-
-  return Array.from({ length: count }, (_, index) =>
-    applyTemplateToStore(createBaseStore(`매장 ${index + 1}`), templateId, index),
-  );
 }
 
 export function buildInitialState(options?: {
   salesBasis?: WizardState["salesBasis"];
-  storeMode?: StoreMode;
   vatMode?: VatMode;
   templateId?: string;
 }): AppState {
   const templateId = options?.templateId ?? TEMPLATES[0].id;
-  const storeMode = options?.storeMode ?? "single";
-  const stores = buildStores(storeMode, templateId);
 
   return {
     wizard: {
       salesBasis: options?.salesBasis ?? "monthly",
-      storeMode,
       vatMode: options?.vatMode ?? "inclusive",
       templateId,
       completed: false,
     },
     analysisMode: "current",
     targetMonthlyNetProfit: DEFAULT_TARGET_MONTHLY_NET_PROFIT,
-    selectedStoreId: stores[0].id,
     priceCatalog: {
       ingredients: applyCatalogMultiplier(
         BASE_INGREDIENT_CATALOG,
@@ -567,7 +577,7 @@ export function buildInitialState(options?: {
       ),
       packaging: applyCatalogMultiplier(BASE_PACKAGING_CATALOG, 1),
     },
-    stores,
+    store: applyTemplateToStore(createBaseStore(), templateId),
   };
 }
 
@@ -578,11 +588,10 @@ export function getTemplateById(templateId: string): TemplateDefinition {
 export function rebaseStateFromTemplate(
   state: AppState,
   templateId: string,
-  overrides?: Partial<Pick<WizardState, "salesBasis" | "storeMode" | "vatMode">>,
+  overrides?: Partial<Pick<WizardState, "salesBasis" | "vatMode">>,
 ) {
   const next = buildInitialState({
     salesBasis: overrides?.salesBasis ?? state.wizard.salesBasis,
-    storeMode: overrides?.storeMode ?? state.wizard.storeMode,
     vatMode: overrides?.vatMode ?? state.wizard.vatMode,
     templateId,
   });
@@ -590,12 +599,5 @@ export function rebaseStateFromTemplate(
   next.wizard.completed = state.wizard.completed;
   next.analysisMode = state.analysisMode;
   next.targetMonthlyNetProfit = state.targetMonthlyNetProfit;
-  return next;
-}
-
-export function duplicateStore(source: StoreState) {
-  const next = deepClone(source);
-  next.id = createId("store");
-  next.name = `${source.name} 복제`;
   return next;
 }

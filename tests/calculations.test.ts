@@ -10,30 +10,29 @@ describe("calculateAppState", () => {
 
     expect(result.totals.monthlyNetProfit).toBeGreaterThan(0);
     expect(result.totals.annualNetProfit).toBe(result.totals.monthlyNetProfit * 12);
-    expect(result.storeResults[0].menuResults).toHaveLength(11);
+    expect(result.result.menuResults).toHaveLength(11);
   });
 
   it("연매출 기준일 때 연매출을 월 기준으로 환산한다", () => {
     const state = buildInitialState({
       salesBasis: "annual",
     });
-    state.stores[0].sales.annualSales = 600_000_000;
-    state.stores[0].sales.monthlySales = 10_000_000;
+    state.store.sales.annualSales = 600_000_000;
+    state.store.sales.monthlySales = 10_000_000;
 
     const result = calculateAppState(state);
 
-    expect(result.storeResults[0].monthlySalesGross).toBe(50_000_000);
+    expect(result.result.monthlySalesGross).toBe(50_000_000);
   });
 
-  it("카테고리 OFF가 순이익과 경고에 반영된다", () => {
+  it("고정비를 끄면 월 순이익이 증가한다", () => {
     const state = buildInitialState();
     const baseline = calculateAppState(state);
 
-    state.stores[0].categories.fixedCosts.enabled = false;
+    state.store.categories.fixedCosts.enabled = false;
     const updated = calculateAppState(state);
 
     expect(updated.totals.monthlyNetProfit).toBeGreaterThan(baseline.totals.monthlyNetProfit);
-    expect(updated.coverage.warnings).toContain("고정비 OFF");
   });
 
   it("목표 순이익이 커지면 권장가가 현재가보다 높아진다", () => {
@@ -41,9 +40,7 @@ describe("calculateAppState", () => {
     state.targetMonthlyNetProfit = 30_000_000;
 
     const result = calculateAppState(state);
-    const americano = result.storeResults[0].menuResults.find(
-      (menu) => menu.menuId === "americano",
-    );
+    const americano = result.result.menuResults.find((menu) => menu.menuId === "americano");
 
     expect(americano).toBeDefined();
     expect((americano?.recommendedAveragePrice ?? 0)).toBeGreaterThan(
@@ -59,11 +56,11 @@ describe("calculateAppState", () => {
     const inclusiveResult = calculateAppState(inclusive);
     const exclusiveResult = calculateAppState(exclusive);
 
-    expect(inclusiveResult.storeResults[0].monthlySalesSupply).toBeLessThan(
-      inclusiveResult.storeResults[0].monthlySalesGross,
+    expect(inclusiveResult.result.monthlySalesSupply).toBeLessThan(
+      inclusiveResult.result.monthlySalesGross,
     );
-    expect(exclusiveResult.storeResults[0].monthlySalesSupply).toBe(
-      exclusiveResult.storeResults[0].monthlySalesGross,
+    expect(exclusiveResult.result.monthlySalesSupply).toBe(
+      exclusiveResult.result.monthlySalesGross,
     );
   });
 });

@@ -1,5 +1,4 @@
 export type SalesBasis = "monthly" | "annual";
-export type StoreMode = "single" | "multi";
 export type VatMode = "inclusive" | "exclusive";
 export type AnalysisMode = "current" | "target";
 export type CategoryKey =
@@ -26,7 +25,6 @@ export interface CategoryState {
 
 export interface WizardState {
   salesBasis: SalesBasis;
-  storeMode: StoreMode;
   vatMode: VatMode;
   templateId: string;
   completed: boolean;
@@ -127,8 +125,6 @@ export interface LossInputs {
 }
 
 export interface StoreState {
-  id: string;
-  name: string;
   sales: SalesInputs;
   variableCosts: VariableCostInputs;
   labor: LaborInputs;
@@ -142,12 +138,11 @@ export interface AppState {
   wizard: WizardState;
   analysisMode: AnalysisMode;
   targetMonthlyNetProfit: number;
-  selectedStoreId: string;
   priceCatalog: {
     ingredients: PriceCatalogItem[];
     packaging: PriceCatalogItem[];
   };
-  stores: StoreState[];
+  store: StoreState;
 }
 
 export interface TemplateDefinition {
@@ -169,15 +164,6 @@ export interface FieldDefinition<T extends string> {
 export interface CostDriver {
   label: string;
   amount: number;
-}
-
-export interface CoverageSummary {
-  includedCategories: string[];
-  activeItemCount: number;
-  priceFactors: string[];
-  costRateFactors: string[];
-  netProfitFactors: string[];
-  warnings: string[];
 }
 
 export interface FeasibilityResult {
@@ -211,8 +197,6 @@ export interface MenuResult {
 }
 
 export interface StoreCalculationResult {
-  storeId: string;
-  name: string;
   monthlySalesGross: number;
   monthlySalesSupply: number;
   derivedMonthlySalesGross: number;
@@ -228,7 +212,6 @@ export interface StoreCalculationResult {
   requiredAverageTicket: number;
   menuResults: MenuResult[];
   topCostDrivers: CostDriver[];
-  coverage: CoverageSummary;
   feasibility: FeasibilityResult;
 }
 
@@ -240,9 +223,8 @@ export interface AppCalculationResult {
     annualNetProfit: number;
     targetMonthlyGap: number;
   };
-  storeResults: StoreCalculationResult[];
+  result: StoreCalculationResult;
   topCostDrivers: CostDriver[];
-  coverage: CoverageSummary;
   feasibility: FeasibilityResult;
 }
 

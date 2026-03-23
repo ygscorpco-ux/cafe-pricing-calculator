@@ -1,20 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { LayoutPanelLeft, PanelsTopLeft, Save, ShieldCheck } from "lucide-react";
+import { LayoutPanelLeft, PanelsTopLeft, Save } from "lucide-react";
 
-import { CoveragePanel } from "@/components/coverage-panel";
 import { ResultsDashboard } from "@/components/results-dashboard";
 import { SettingsSidebar } from "@/components/settings-sidebar";
 import { appReducer, createInitialAppState } from "@/lib/app-state";
 import { calculateAppState } from "@/lib/calculations";
 import { formatCompactCurrency } from "@/lib/format";
-import { loadStoredScenarios, loadStoredState, saveStoredScenarios, saveStoredState } from "@/lib/storage";
+import {
+  loadStoredScenarios,
+  loadStoredState,
+  saveStoredScenarios,
+  saveStoredState,
+} from "@/lib/storage";
 import { getTemplateById } from "@/lib/seeds";
 import { createId, deepClone, cn } from "@/lib/utils";
 import type { SavedScenario } from "@/lib/types";
 
-type MobilePanel = "settings" | "results" | "coverage";
+type MobilePanel = "settings" | "results";
 
 export function CafePricingApp() {
   const [state, dispatch] = useReducer(appReducer, undefined, () => {
@@ -54,11 +58,6 @@ export function CafePricingApp() {
   }, [savedScenarios]);
 
   const result = useMemo(() => calculateAppState(state), [state]);
-  const selectedStore =
-    state.stores.find((store) => store.id === state.selectedStoreId) ?? state.stores[0];
-  const selectedStoreResult =
-    result.storeResults.find((storeResult) => storeResult.storeId === selectedStore.id) ??
-    result.storeResults[0];
   const activeTemplate = getTemplateById(state.wizard.templateId);
 
   const handleSaveScenario = () => {
@@ -93,7 +92,7 @@ export function CafePricingApp() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(255,243,221,0.9),_transparent_28%),linear-gradient(180deg,#f4f0e8_0%,#eef6f3_40%,#edf2f0_100%)] px-4 py-6 text-[#16342e] sm:px-6 xl:px-8">
-      <div className="mx-auto max-w-[1800px]">
+      <div className="mx-auto max-w-[1680px]">
         <header className="rounded-[34px] border border-white/70 bg-white/80 px-6 py-5 shadow-[0_20px_70px_rgba(22,52,46,0.08)] backdrop-blur">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-3xl">
@@ -104,8 +103,8 @@ export function CafePricingApp() {
                 카페 메뉴 가격, 원가, 순이익을 한 화면에서 설계하는 도구
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[#5f7f78] sm:text-base">
-                초보자도 몇 번의 클릭으로 월 순수익, 연 순수익, 목표 순수익 기준 권장 판매가,
-                현재 가격에 반영된 비용 항목을 바로 확인할 수 있게 설계했습니다.
+                초보자도 몇 번의 클릭으로 월 순수익, 연 순수익, 목표 순수익 기준 권장 판매가를
+                바로 확인할 수 있게 구성했습니다.
               </p>
             </div>
 
@@ -168,26 +167,13 @@ export function CafePricingApp() {
             <PanelsTopLeft className="h-4 w-4" />
             결과
           </button>
-          <button
-            type="button"
-            onClick={() => setMobilePanel("coverage")}
-            className={cn(
-              "inline-flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold",
-              mobilePanel === "coverage"
-                ? "bg-[#16342e] text-white"
-                : "bg-white/80 text-[#4d6963]",
-            )}
-          >
-            <ShieldCheck className="h-4 w-4" />
-            반영 항목
-          </button>
         </div>
 
-        <main className="mt-5 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)_320px]">
+        <main className="mt-5 grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
           <div className={cn(mobilePanel !== "settings" && "hidden xl:block")}>
             <SettingsSidebar
               state={state}
-              selectedStore={selectedStore}
+              store={state.store}
               dispatch={dispatch}
               onSaveScenario={handleSaveScenario}
               onLoadScenario={handleLoadScenario}
@@ -200,17 +186,7 @@ export function CafePricingApp() {
           </div>
 
           <div className={cn(mobilePanel !== "results" && "hidden xl:block")}>
-            <ResultsDashboard
-              state={state}
-              result={result}
-              selectedStore={selectedStore}
-              selectedStoreResult={selectedStoreResult}
-              dispatch={dispatch}
-            />
-          </div>
-
-          <div className={cn(mobilePanel !== "coverage" && "hidden xl:block")}>
-            <CoveragePanel result={result} selectedStoreResult={selectedStoreResult} />
+            <ResultsDashboard state={state} result={result} dispatch={dispatch} />
           </div>
         </main>
 

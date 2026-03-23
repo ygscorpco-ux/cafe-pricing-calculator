@@ -1,15 +1,9 @@
-import {
-  CATEGORY_META,
-  GOAL_THRESHOLDS,
-  VAT_RATE,
-  WARNING_LABELS,
-} from "@/lib/constants";
+import { GOAL_THRESHOLDS, VAT_RATE } from "@/lib/constants";
 import { roundToUnit } from "@/lib/utils";
 import type {
   AppCalculationResult,
   AppState,
   CostDriver,
-  CoverageSummary,
   FeasibilityResult,
   MenuResult,
   MenuState,
@@ -21,13 +15,11 @@ type CostMap = Map<string, number>;
 
 interface MenuInternal {
   result: MenuResult;
-  currentAverageSupplyPrice: number;
   effectiveVariableRate: number;
 }
 
 interface StoreBaseResult {
-  storeResult: StoreCalculationResult;
-  monthlyCustomers: number;
+  result: StoreCalculationResult;
   menuInternals: MenuInternal[];
 }
 
@@ -54,26 +46,26 @@ function supplyToGross(price: number, vatMode: AppState["wizard"]["vatMode"]) {
   return vatMode === "inclusive" ? price * (1 + VAT_RATE) : price;
 }
 
-function pickMonthlySales(state: AppState["stores"][number], wizard: AppState["wizard"]) {
+function pickMonthlySales(store: AppState["store"], wizard: AppState["wizard"]) {
   const derived =
-    state.sales.averageTicket *
-    state.sales.visitorsPerDay *
-    state.sales.operatingDaysPerMonth;
+    store.sales.averageTicket *
+    store.sales.visitorsPerDay *
+    store.sales.operatingDaysPerMonth;
 
-  if (wizard.salesBasis === "annual" && state.sales.annualSales > 0) {
-    return state.sales.annualSales / 12;
+  if (wizard.salesBasis === "annual" && store.sales.annualSales > 0) {
+    return store.sales.annualSales / 12;
   }
 
-  if (wizard.salesBasis === "monthly" && state.sales.monthlySales > 0) {
-    return state.sales.monthlySales;
+  if (wizard.salesBasis === "monthly" && store.sales.monthlySales > 0) {
+    return store.sales.monthlySales;
   }
 
-  if (state.sales.monthlySales > 0) {
-    return state.sales.monthlySales;
+  if (store.sales.monthlySales > 0) {
+    return store.sales.monthlySales;
   }
 
-  if (state.sales.annualSales > 0) {
-    return state.sales.annualSales / 12;
+  if (store.sales.annualSales > 0) {
+    return store.sales.annualSales / 12;
   }
 
   return derived;
@@ -87,93 +79,6 @@ function normalizeShares(menus: MenuState[]) {
   }
 
   return menus.map((menu) => menu.share / total);
-}
-
-function buildCoverage(state: AppState, store: AppState["stores"][number]): CoverageSummary {
-  const includedCategories = (Object.entries(store.categories) as [
-    keyof typeof store.categories,
-    (typeof store.categories)[keyof typeof store.categories],
-  ][])
-    .filter(([, category]) => category.enabled)
-    .map(([key]) => CATEGORY_META[key].label);
-
-  let activeItemCount = 0;
-
-  if (store.categories.ingredients.enabled) {
-    activeItemCount += state.priceCatalog.ingredients.filter((item) => item.enabled).length;
-  }
-
-  if (store.categories.packaging.enabled) {
-    activeItemCount += state.priceCatalog.packaging.filter((item) => item.enabled).length;
-  }
-
-  if (store.categories.variableCosts.enabled) {
-    activeItemCount += 5;
-  }
-
-  if (store.categories.labor.enabled) {
-    activeItemCount += store.categories.labor.useBundle ? 5 : 8;
-  }
-
-  if (store.categories.fixedCosts.enabled) {
-    activeItemCount += store.categories.fixedCosts.useBundle ? 5 : 12;
-  }
-
-  if (store.categories.loss.enabled) {
-    activeItemCount += store.categories.loss.useBundle ? 1 : 5;
-  }
-
-  const priceFactors = [
-    store.categories.ingredients.enabled ? "직접 원재료비" : null,
-    store.categories.packaging.enabled ? "포장재" : null,
-    store.categories.variableCosts.enabled ? "카드/플랫폼/할인 변동비" : null,
-    store.categories.labor.enabled ? "인건비 배분" : null,
-    store.categories.fixedCosts.enabled ? "고정비 배분" : null,
-    store.categories.loss.enabled ? "로스/폐기" : null,
-    "부가세",
-  ].filter(Boolean) as string[];
-
-  const costRateFactors = [
-    store.categories.ingredients.enabled ? "직접 원재료비" : null,
-    store.categories.packaging.enabled ? "포장재" : null,
-    store.categories.variableCosts.enabled ? "변동비" : null,
-    store.categories.loss.enabled ? "로스/폐기" : null,
-  ].filter(Boolean) as string[];
-
-  const netProfitFactors = [
-    ...priceFactors.filter((value) => value !== "인건비 배분" && value !== "고정비 배분"),
-    store.categories.labor.enabled ? "인건비" : null,
-    store.categories.fixedCosts.enabled ? "고정비" : null,
-  ].filter(Boolean) as string[];
-
-  const warnings: string[] = [];
-
-  if (!store.categories.ingredients.enabled) warnings.push(WARNING_LABELS.ingredients);
-  if (!store.categories.packaging.enabled && store.sales.takeoutRatio > 0.5) {
-    warnings.push(WARNING_LABELS.packaging);
-  }
-  if (!store.categories.variableCosts.enabled) warnings.push(WARNING_LABELS.variableCosts);
-  if (!store.categories.labor.enabled) warnings.push(WARNING_LABELS.labor);
-  if (!store.categories.fixedCosts.enabled) warnings.push(WARNING_LABELS.fixedCosts);
-  if (!store.categories.loss.enabled) warnings.push(WARNING_LABELS.loss);
-  if (store.labor.retirementReserveRate <= 0) warnings.push(WARNING_LABELS.retirementReserve);
-  if (store.fixedCosts.equipmentLeaseDepreciation <= 0) {
-    warnings.push(WARNING_LABELS.equipmentLeaseDepreciation);
-  }
-
-  const shareTotal = store.menus.reduce((sum, menu) => sum + menu.share, 0);
-  if (Math.abs(shareTotal - 100) > 1) {
-    warnings.push("메뉴 판매 비중 합계가 100%가 아님");
-  }
-
-  return {
-    includedCategories,
-    activeItemCount,
-    priceFactors,
-    costRateFactors,
-    netProfitFactors,
-    warnings,
-  };
 }
 
 function calculateFeasibility(
@@ -224,7 +129,7 @@ function calculateFeasibility(
   };
 }
 
-function calculateLaborCost(store: AppState["stores"][number], costs: CostMap) {
+function calculateLaborCost(store: AppState["store"], costs: CostMap) {
   if (!store.categories.labor.enabled) {
     return 0;
   }
@@ -253,7 +158,7 @@ function calculateLaborCost(store: AppState["stores"][number], costs: CostMap) {
   return total;
 }
 
-function calculateFixedCost(store: AppState["stores"][number], costs: CostMap) {
+function calculateFixedCost(store: AppState["store"], costs: CostMap) {
   if (!store.categories.fixedCosts.enabled) {
     return 0;
   }
@@ -296,14 +201,12 @@ function calculateFixedCost(store: AppState["stores"][number], costs: CostMap) {
 
 function calculateMenuResults(
   state: AppState,
-  store: AppState["stores"][number],
+  store: AppState["store"],
   costs: CostMap,
-): { menuResults: MenuResult[]; internals: MenuInternal[]; monthlyContribution: number; monthlyDirectCost: number; monthlyPackagingCost: number; monthlyVariableCost: number; monthlyLossCost: number } {
+) {
   const monthlySalesGross = pickMonthlySales(store, state.wizard);
   const shareRatios = normalizeShares(store.menus);
-  const ingredientMap = new Map(
-    state.priceCatalog.ingredients.map((item) => [item.id, item]),
-  );
+  const ingredientMap = new Map(state.priceCatalog.ingredients.map((item) => [item.id, item]));
   const packagingMap = new Map(state.priceCatalog.packaging.map((item) => [item.id, item]));
 
   const menuResults: MenuResult[] = [];
@@ -429,7 +332,10 @@ function calculateMenuResults(
           addCost(
             costs,
             "플랫폼 수수료",
-            supplyPrice * variantUnits * store.sales.takeoutRatio * store.variableCosts.platformFeeRate,
+            supplyPrice *
+              variantUnits *
+              store.sales.takeoutRatio *
+              store.variableCosts.platformFeeRate,
           );
           addCost(
             costs,
@@ -486,7 +392,6 @@ function calculateMenuResults(
     menuResults.push(menuResult);
     internals.push({
       result: menuResult,
-      currentAverageSupplyPrice,
       effectiveVariableRate,
     });
   });
@@ -502,10 +407,8 @@ function calculateMenuResults(
   };
 }
 
-function calculateStoreBaseResult(
-  state: AppState,
-  store: AppState["stores"][number],
-): StoreBaseResult {
+function calculateStoreBaseResult(state: AppState): StoreBaseResult {
+  const store = state.store;
   const costs = new Map<string, number>();
   const monthlySalesGross = pickMonthlySales(store, state.wizard);
   const monthlySalesSupply = grossToSupply(monthlySalesGross, state.wizard.vatMode);
@@ -524,14 +427,11 @@ function calculateStoreBaseResult(
       ? (state.targetMonthlyNetProfit - monthlyNetProfit) / monthlyCustomers +
         store.sales.averageTicket
       : store.sales.averageTicket;
-
   const currentPrices = menuComputation.menuResults.map(
     (menuResult) => menuResult.currentAveragePrice,
   );
 
-  const storeResult: StoreCalculationResult = {
-    storeId: store.id,
-    name: store.name,
+  const result: StoreCalculationResult = {
     monthlySalesGross,
     monthlySalesSupply,
     derivedMonthlySalesGross,
@@ -546,33 +446,26 @@ function calculateStoreBaseResult(
     monthlyFixedCost,
     requiredAverageTicket,
     menuResults: menuComputation.menuResults,
-    topCostDrivers: toArrayMap(costs).slice(0, 5),
-    coverage: buildCoverage(state, store),
+    topCostDrivers: toArrayMap(costs).slice(0, 6),
     feasibility: calculateFeasibility(0, currentPrices, currentPrices),
   };
 
   return {
-    storeResult,
-    monthlyCustomers,
+    result,
     menuInternals: menuComputation.internals,
   };
 }
 
 function applyTargetRecommendations(
   base: StoreBaseResult,
-  appTargetGap: number,
-  totalSalesGross: number,
+  targetGap: number,
   vatMode: AppState["wizard"]["vatMode"],
 ): StoreCalculationResult {
-  const storeGap =
-    appTargetGap === 0 || totalSalesGross <= 0
-      ? 0
-      : appTargetGap * (base.storeResult.monthlySalesGross / totalSalesGross);
   const menuResults = base.menuInternals.map((internal) => {
     const menuGap =
-      base.storeResult.monthlySalesGross <= 0
+      base.result.monthlySalesGross <= 0
         ? 0
-        : storeGap * (internal.result.monthlyRevenue / base.storeResult.monthlySalesGross);
+        : targetGap * (internal.result.monthlyRevenue / base.result.monthlySalesGross);
     const deltaProfitPerUnit =
       internal.result.unitsSold > 0 ? menuGap / internal.result.unitsSold : 0;
     const retentionRate = Math.max(0.25, 1 - internal.effectiveVariableRate);
@@ -603,75 +496,28 @@ function applyTargetRecommendations(
   );
 
   return {
-    ...base.storeResult,
+    ...base.result,
     menuResults,
-    requiredAverageTicket: Math.max(base.storeResult.requiredAverageTicket, 0),
-    feasibility: calculateFeasibility(storeGap, currentPrices, recommendedPrices),
-  };
-}
-
-function mergeCoverage(coverages: CoverageSummary[]): CoverageSummary {
-  const setFrom = (selector: (coverage: CoverageSummary) => string[]) =>
-    [...new Set(coverages.flatMap(selector))];
-
-  return {
-    includedCategories: setFrom((coverage) => coverage.includedCategories),
-    activeItemCount: coverages.reduce((sum, coverage) => sum + coverage.activeItemCount, 0),
-    priceFactors: setFrom((coverage) => coverage.priceFactors),
-    costRateFactors: setFrom((coverage) => coverage.costRateFactors),
-    netProfitFactors: setFrom((coverage) => coverage.netProfitFactors),
-    warnings: setFrom((coverage) => coverage.warnings),
+    requiredAverageTicket: Math.max(base.result.requiredAverageTicket, 0),
+    feasibility: calculateFeasibility(targetGap, currentPrices, recommendedPrices),
   };
 }
 
 export function calculateAppState(state: AppState): AppCalculationResult {
-  const baseResults = state.stores.map((store) => calculateStoreBaseResult(state, store));
-  const currentMonthlyNetProfit = baseResults.reduce(
-    (sum, store) => sum + store.storeResult.monthlyNetProfit,
-    0,
-  );
-  const totalSalesGross = baseResults.reduce(
-    (sum, store) => sum + store.storeResult.monthlySalesGross,
-    0,
-  );
-  const targetGap = state.targetMonthlyNetProfit - currentMonthlyNetProfit;
-  const storeResults = baseResults.map((store) =>
-    applyTargetRecommendations(store, targetGap, totalSalesGross, state.wizard.vatMode),
-  );
-  const topCostDrivers = toArrayMap(
-    storeResults.reduce((map, storeResult) => {
-      storeResult.topCostDrivers.forEach((driver) =>
-        map.set(driver.label, (map.get(driver.label) ?? 0) + driver.amount),
-      );
-      return map;
-    }, new Map<string, number>()),
-  ).slice(0, 6);
-  const coverage = mergeCoverage(storeResults.map((storeResult) => storeResult.coverage));
-  const feasibility = calculateFeasibility(
-    targetGap,
-    storeResults.flatMap((storeResult) =>
-      storeResult.menuResults.map((menuResult) => menuResult.currentAveragePrice),
-    ),
-    storeResults.flatMap((storeResult) =>
-      storeResult.menuResults.map((menuResult) => menuResult.recommendedAveragePrice),
-    ),
-  );
+  const base = calculateStoreBaseResult(state);
+  const targetGap = state.targetMonthlyNetProfit - base.result.monthlyNetProfit;
+  const result = applyTargetRecommendations(base, targetGap, state.wizard.vatMode);
 
   return {
     totals: {
-      monthlySalesGross: storeResults.reduce(
-        (sum, storeResult) => sum + storeResult.monthlySalesGross,
-        0,
-      ),
-      annualSalesGross:
-        storeResults.reduce((sum, storeResult) => sum + storeResult.monthlySalesGross, 0) * 12,
-      monthlyNetProfit: currentMonthlyNetProfit,
-      annualNetProfit: currentMonthlyNetProfit * 12,
+      monthlySalesGross: result.monthlySalesGross,
+      annualSalesGross: result.monthlySalesGross * 12,
+      monthlyNetProfit: base.result.monthlyNetProfit,
+      annualNetProfit: base.result.monthlyNetProfit * 12,
       targetMonthlyGap: targetGap,
     },
-    storeResults,
-    topCostDrivers,
-    coverage,
-    feasibility,
+    result,
+    topCostDrivers: result.topCostDrivers,
+    feasibility: result.feasibility,
   };
 }

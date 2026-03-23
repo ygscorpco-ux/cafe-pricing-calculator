@@ -10,7 +10,7 @@ import type {
 } from "@/lib/types";
 
 export const VAT_RATE = 0.1;
-export const STORAGE_VERSION = "v1";
+export const STORAGE_VERSION = "v2";
 export const DEFAULT_TARGET_MONTHLY_NET_PROFIT = 20_000_000;
 export const GOAL_THRESHOLDS = {
   achievable: 0.07,
@@ -291,14 +291,3 @@ export const LOSS_FIELDS: FieldDefinition<keyof LossInputs>[] = [
   },
   { key: "failureRate", label: "제조 실패율", kind: "percent", advanced: true },
 ];
-
-export const WARNING_LABELS = {
-  labor: "인건비 OFF",
-  fixedCosts: "고정비 OFF",
-  variableCosts: "변동비 OFF",
-  loss: "로스/폐기 OFF",
-  ingredients: "직접 원재료비 OFF",
-  packaging: "포장재 OFF",
-  retirementReserve: "퇴직충당금 OFF",
-  equipmentLeaseDepreciation: "감가상각 OFF",
-};
