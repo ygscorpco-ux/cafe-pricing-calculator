@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, CircleHelp, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  CircleHelp,
+  PanelLeftClose,
+  Sparkles,
+} from "lucide-react";
 
 import {
   CATEGORY_META,
@@ -9,21 +15,17 @@ import {
   LABOR_FIELDS,
   LOSS_FIELDS,
   SALES_FIELDS,
-  TEMPLATES,
   VARIABLE_COST_FIELDS,
 } from "@/lib/constants";
 import { cn, percentFromRatio, ratioFromPercentInput } from "@/lib/utils";
 import type { AppAction } from "@/lib/app-state";
 import type { AppState, CategoryKey, FieldDefinition, PriceCatalogItem } from "@/lib/types";
 
-interface SettingsSidebarProps {
+interface InputTrayProps {
   state: AppState;
   store: AppState["store"];
   dispatch: React.Dispatch<AppAction>;
-  onSaveScenario: () => void;
-  onLoadScenario: (scenarioId: string) => void;
-  onDeleteScenario: (scenarioId: string) => void;
-  savedScenarioOptions: Array<{ id: string; name: string }>;
+  onClose: () => void;
 }
 
 type SettingsView = "basics" | "menuCosts" | "operations";
@@ -130,7 +132,7 @@ function FieldInput({
   unitLabel,
   onChange,
 }: {
-  label: string;
+  label?: string;
   description?: string;
   value: number;
   kind: FieldDefinition<string>["kind"];
@@ -138,13 +140,13 @@ function FieldInput({
   onChange: (nextValue: number) => void;
 }) {
   const displayValue = kind === "percent" ? percentFromRatio(value) : value;
-  const showHeader = Boolean(label) || Boolean(description);
+  const suffix = kind === "currency" ? "원" : unitLabel ?? (kind === "percent" ? "%" : "");
 
   return (
     <label className="block">
-      {showHeader ? (
+      {label ? (
         <div className="mb-1.5 flex items-center gap-1 text-xs font-medium text-[#5d7a74]">
-          {label ? <span>{label}</span> : null}
+          <span>{label}</span>
           {description ? <HelpTooltip content={description} /> : null}
         </div>
       ) : null}
@@ -158,9 +160,7 @@ function FieldInput({
           }}
           className="h-10 w-full bg-transparent text-sm text-[#183a33] outline-none"
         />
-        <span className="text-xs text-[#6b8781]">
-          {kind === "currency" ? "원" : unitLabel ?? (kind === "percent" ? "%" : "")}
-        </span>
+        <span className="text-xs text-[#6b8781]">{suffix}</span>
       </div>
     </label>
   );
@@ -255,7 +255,7 @@ function PriceCatalogEditor({
         .map((item) => (
           <div
             key={item.id}
-            className="grid grid-cols-[1fr_110px] items-center gap-3 rounded-2xl border border-[#dce4e0] bg-[#f8fbfa] px-3 py-2"
+            className="grid grid-cols-[1fr_120px] items-center gap-3 rounded-2xl border border-[#dce4e0] bg-[#f8fbfa] px-3 py-2"
           >
             <div className="flex items-center gap-2">
               <input
@@ -265,11 +265,10 @@ function PriceCatalogEditor({
               />
               <div>
                 <p className="text-sm font-medium text-[#1d3d36]">{item.label}</p>
-                <p className="text-[11px] text-[#6b8781]">{item.unit}당 기준 단가</p>
+                <p className="text-[11px] text-[#6b8781]">{item.unit} 기준 단가</p>
               </div>
             </div>
             <FieldInput
-              label=""
               value={item.pricePerUnit}
               kind="currency"
               unitLabel={item.unit}
@@ -311,114 +310,36 @@ function FieldsGroup<T extends string>({
   );
 }
 
-export function SettingsSidebar({
-  state,
-  store,
-  dispatch,
-  onSaveScenario,
-  onLoadScenario,
-  onDeleteScenario,
-  savedScenarioOptions,
-}: SettingsSidebarProps) {
+export function InputTray({ state, store, dispatch, onClose }: InputTrayProps) {
   const [settingsView, setSettingsView] = useState<SettingsView>("basics");
   const storeCategory = store.categories;
 
   return (
-    <section className="space-y-4 xl:sticky xl:top-6">
+    <section className="space-y-4">
       <div className="rounded-[30px] border border-[#d5ddda] bg-white/95 p-5 shadow-[0_18px_60px_rgba(22,52,46,0.08)]">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#5f7f78]">
-              Quick Start
+              Input Tray
             </p>
-            <h2 className="mt-2 text-lg font-semibold text-[#16342e]">3분 안에 결과 보기</h2>
+            <h2 className="mt-2 text-lg font-semibold text-[#16342e]">
+              필요할 때만 여는 입력 패널
+            </h2>
+            <p className="mt-1 text-sm text-[#607d76]">
+              가격을 보면서 필요한 항목만 꺼내 수정할 수 있게 입력을 3묶음으로 압축했습니다.
+            </p>
           </div>
           <button
             type="button"
-            onClick={() => dispatch({ type: "completeWizard" })}
-            className="rounded-full bg-[#16342e] px-3 py-2 text-xs font-semibold text-white"
+            onClick={onClose}
+            className="hidden xl:inline-flex items-center gap-2 rounded-full bg-[#eef4f2] px-3 py-2 text-xs font-semibold text-[#4f6b66]"
           >
-            {state.wizard.completed ? "설정 완료" : "빠른 시작 완료"}
+            <PanelLeftClose className="h-3.5 w-3.5" />
+            입력 접기
           </button>
         </div>
 
-        <div className="mt-4 space-y-4">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#67847e]">
-              매출 기준
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <SegmentButton
-                active={state.wizard.salesBasis === "monthly"}
-                onClick={() => dispatch({ type: "setSalesBasis", value: "monthly" })}
-              >
-                월매출 기준
-              </SegmentButton>
-              <SegmentButton
-                active={state.wizard.salesBasis === "annual"}
-                onClick={() => dispatch({ type: "setSalesBasis", value: "annual" })}
-              >
-                연매출 기준
-              </SegmentButton>
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#67847e]">
-              부가세 기준
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <SegmentButton
-                active={state.wizard.vatMode === "inclusive"}
-                onClick={() => dispatch({ type: "setVatMode", value: "inclusive" })}
-              >
-                포함가
-              </SegmentButton>
-              <SegmentButton
-                active={state.wizard.vatMode === "exclusive"}
-                onClick={() => dispatch({ type: "setVatMode", value: "exclusive" })}
-              >
-                별도가
-              </SegmentButton>
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#67847e]">
-              기본 템플릿
-            </p>
-            <div className="grid gap-2">
-              {TEMPLATES.map((template) => (
-                <button
-                  key={template.id}
-                  type="button"
-                  onClick={() => dispatch({ type: "applyTemplate", templateId: template.id })}
-                  className={cn(
-                    "rounded-2xl border px-3 py-3 text-left transition",
-                    state.wizard.templateId === template.id
-                      ? "border-[#173a33] bg-[#f4faf7]"
-                      : "border-[#d6dfdb] bg-[#fbfdfc] hover:border-[#b8c7c2]",
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-[#173a33]">{template.name}</span>
-                    <span className="rounded-full bg-[#eef5f2] px-2 py-1 text-[11px] font-semibold text-[#4f6b66]">
-                      {template.tone}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-[#64807a]">{template.description}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-[28px] border border-[#d5ddda] bg-white/95 p-4 shadow-[0_12px_36px_rgba(22,52,46,0.06)]">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#67847e]">
-          입력 묶음
-        </p>
-        <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
+        <div className="mt-4 grid gap-2 sm:grid-cols-3">
           <button
             type="button"
             onClick={() => setSettingsView("basics")}
@@ -430,7 +351,7 @@ export function SettingsSidebar({
             )}
           >
             <p className="text-sm font-semibold text-[#173a33]">기본 입력</p>
-            <p className="mt-1 text-xs text-[#64807a]">A 매출 기준 + 시작 설정</p>
+            <p className="mt-1 text-xs text-[#64807a]">A. 매출 기준</p>
           </button>
           <button
             type="button"
@@ -443,7 +364,7 @@ export function SettingsSidebar({
             )}
           >
             <p className="text-sm font-semibold text-[#173a33]">메뉴 · 원가</p>
-            <p className="mt-1 text-xs text-[#64807a]">B 메뉴 스펙 + C~D 원가 단가</p>
+            <p className="mt-1 text-xs text-[#64807a]">B 메뉴 스펙 + C~D 단가</p>
           </button>
           <button
             type="button"
@@ -456,7 +377,7 @@ export function SettingsSidebar({
             )}
           >
             <p className="text-sm font-semibold text-[#173a33]">운영비</p>
-            <p className="mt-1 text-xs text-[#64807a]">E 변동비 + F~H 운영 비용</p>
+            <p className="mt-1 text-xs text-[#64807a]">E 변동비 + F~H 비용</p>
           </button>
         </div>
       </div>
@@ -517,7 +438,7 @@ export function SettingsSidebar({
             }
             titleExtra={
               <div className="rounded-2xl bg-[#f6faf8] px-3 py-3 text-sm text-[#56726c]">
-                메뉴별 컵 용량, 샷 수, 재료량, HOT/ICE 가격은 중앙의 메뉴 표에서 바로 수정합니다.
+                메뉴별 컵 용량, 샷 수, 재료량과 HOT/ICE 가격은 바로 아래 메인 작업면에서 수정합니다.
               </div>
             }
           >
@@ -612,7 +533,7 @@ export function SettingsSidebar({
                 className="inline-flex items-center gap-2 rounded-full bg-[#eef4f2] px-3 py-2 text-xs font-semibold text-[#4f6b66]"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                고급 포장 {storeCategory.packaging.showAdvanced ? "숨기기" : "보기"}
+                고급 포장재 {storeCategory.packaging.showAdvanced ? "숨기기" : "보기"}
               </button>
             }
           >
@@ -817,64 +738,6 @@ export function SettingsSidebar({
           </SectionCard>
         </>
       ) : null}
-
-      <div className="rounded-[28px] border border-[#d5ddda] bg-white/95 p-4 shadow-[0_12px_36px_rgba(22,52,46,0.06)]">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-[#173a33]">현재 설정 저장</p>
-            <p className="mt-1 text-xs text-[#66827c]">
-              템플릿에서 조금씩 바꿔가며 비교할 수 있게 저장합니다.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onSaveScenario}
-            className="rounded-full bg-[#16342e] px-3 py-2 text-xs font-semibold text-white"
-          >
-            저장
-          </button>
-        </div>
-
-        {savedScenarioOptions.length > 0 ? (
-          <div className="mt-3 space-y-2">
-            {savedScenarioOptions.map((scenario) => (
-              <div
-                key={scenario.id}
-                className="flex items-center justify-between gap-2 rounded-2xl border border-[#dae2df] bg-[#f8fbfa] px-3 py-2"
-              >
-                <button
-                  type="button"
-                  onClick={() => onLoadScenario(scenario.id)}
-                  className="text-left text-sm font-medium text-[#173a33]"
-                >
-                  {scenario.name}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDeleteScenario(scenario.id)}
-                  className="rounded-full bg-[#ffe8e4] p-2 text-[#a24336]"
-                  title="시나리오 삭제"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-3 text-xs text-[#6a8780]">아직 저장된 설정이 없습니다.</p>
-        )}
-
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={() => dispatch({ type: "resetState" })}
-            className="inline-flex items-center gap-2 rounded-full bg-[#eef4f2] px-3 py-2 text-xs font-semibold text-[#4f6b66]"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            기본값 리셋
-          </button>
-        </div>
-      </div>
     </section>
   );
 }

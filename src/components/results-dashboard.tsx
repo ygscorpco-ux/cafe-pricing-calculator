@@ -339,6 +339,9 @@ export function ResultsDashboard({ state, result, dispatch }: ResultsDashboardPr
     calculation.monthlyLossCost +
     calculation.monthlyLaborCost +
     calculation.monthlyFixedCost;
+  const shareSum = store.menus.reduce((sum, menu) => sum + menu.share, 0);
+  const basisLabel = state.wizard.salesBasis === "monthly" ? "월매출 기준" : "연매출 기준";
+  const vatLabel = state.wizard.vatMode === "inclusive" ? "부가세 포함가" : "부가세 별도가";
 
   return (
     <section className="space-y-5">
@@ -346,16 +349,21 @@ export function ResultsDashboard({ state, result, dispatch }: ResultsDashboardPr
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#5b7b74]">
-              입력 다음 단계
+              Main Workbench
             </p>
-            <h2 className="mt-2 text-lg font-semibold text-[#16342e]">메뉴별 가격과 권장가</h2>
+            <h2 className="mt-2 text-lg font-semibold text-[#16342e]">
+              메뉴별 가격과 권장가
+            </h2>
             <p className="mt-1 text-sm text-[#607d76]">
-              입력값을 넣은 뒤 가장 먼저 보는 영역입니다. 가격을 바꾸면 아래 대시보드도 즉시
-              다시 계산됩니다.
+              가장 먼저 보는 작업면입니다. 가격을 바꾸면 아래 대시보드와 전체 순익 구조가 즉시 다시 계산됩니다.
             </p>
           </div>
-          <div className="rounded-full bg-[#eef4f2] px-4 py-2 text-xs font-semibold text-[#44635d]">
-            판매 비중 합계 {store.menus.reduce((sum, menu) => sum + menu.share, 0).toFixed(1)}%
+          <div className="flex flex-wrap gap-2 text-xs font-semibold">
+            <span className="rounded-full bg-[#eef4f2] px-4 py-2 text-[#44635d]">{basisLabel}</span>
+            <span className="rounded-full bg-[#eef4f2] px-4 py-2 text-[#44635d]">{vatLabel}</span>
+            <span className="rounded-full bg-[#eef4f2] px-4 py-2 text-[#44635d]">
+              판매 비중 합계 {shareSum.toFixed(1)}%
+            </span>
           </div>
         </div>
 
@@ -473,13 +481,11 @@ export function ResultsDashboard({ state, result, dispatch }: ResultsDashboardPr
                       </td>
                       <td className="px-3 py-4">
                         <div className="grid gap-1 text-sm font-semibold text-[#173a33]">
-                          {Object.entries(menuResult.recommendedPrices).map(
-                            ([temperature, price]) => (
-                              <span key={temperature}>
-                                {temperature.toUpperCase()} {formatCurrency(price)}
-                              </span>
-                            ),
-                          )}
+                          {Object.entries(menuResult.recommendedPrices).map(([temperature, price]) => (
+                            <span key={temperature}>
+                              {temperature.toUpperCase()} {formatCurrency(price)}
+                            </span>
+                          ))}
                         </div>
                       </td>
                       <td className="rounded-r-3xl px-3 py-4">
@@ -525,13 +531,13 @@ export function ResultsDashboard({ state, result, dispatch }: ResultsDashboardPr
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#5b7b74]">
-              대시보드
+              Dashboard
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-[#16342e]">
-              지금 가격으로 얼마나 남는지 한눈에 확인
+              지금 가격으로 얼마 남는지 바로 확인
             </h2>
             <p className="mt-2 text-sm leading-6 text-[#5f7f78]">
-              메뉴 가격을 조정한 뒤 바로 확인하는 요약 영역입니다.
+              메뉴 가격을 조정한 뒤 가장 먼저 보는 요약 영역입니다.
             </p>
           </div>
 
@@ -567,7 +573,7 @@ export function ResultsDashboard({ state, result, dispatch }: ResultsDashboardPr
           <KpiCard
             title="월 순수익"
             value={formatCompactCurrency(result.totals.monthlyNetProfit)}
-            description="현재 가격과 비용 구조를 기준으로 계산한 월 순수익입니다."
+            description="현재 가격과 비용 구조를 기준으로 계산한 예상 월 순수익입니다."
             accent="teal"
           />
           <KpiCard
@@ -586,7 +592,7 @@ export function ResultsDashboard({ state, result, dispatch }: ResultsDashboardPr
             description={
               recommendedSummary.length > 1
                 ? `${recommendedSummary[1].name} ${formatCurrency(recommendedSummary[1].recommendedAveragePrice)}`
-                : "판매량 비중을 기준으로 메뉴별 추천가를 계산합니다."
+                : "판매 비중을 기준으로 메뉴별 권장가를 계산합니다."
             }
             accent="amber"
           />
@@ -597,7 +603,7 @@ export function ResultsDashboard({ state, result, dispatch }: ResultsDashboardPr
                 ? `${recommendedSummary[0].priceGap >= 0 ? "+" : ""}${formatCurrency(recommendedSummary[0].priceGap)}`
                 : "0원"
             }
-            description="가장 변동 폭이 큰 메뉴 기준입니다."
+            description="가장 변화폭이 큰 메뉴 기준입니다."
             accent={
               recommendedSummary[0]?.priceGap && recommendedSummary[0].priceGap < 0
                 ? "sky"
@@ -615,8 +621,8 @@ export function ResultsDashboard({ state, result, dispatch }: ResultsDashboardPr
             value={biggestDriver ? biggestDriver.label : "데이터 없음"}
             description={
               biggestDriver
-                ? `${formatCompactCurrency(biggestDriver.amount)} 수준으로 손익을 깎고 있습니다.`
-                : "계산 결과가 준비되면 비용 요인이 표시됩니다."
+                ? `${formatCompactCurrency(biggestDriver.amount)} 수준으로 이익을 줄이고 있습니다.`
+                : "계산 결과가 준비되면 비용 요인을 보여줍니다."
             }
             accent="rose"
           />
@@ -632,7 +638,7 @@ export function ResultsDashboard({ state, result, dispatch }: ResultsDashboardPr
                 목표 기준 역산
               </div>
               <p className="mt-2 text-sm text-[#607d76]">
-                목표 월 순이익을 넣으면 현재 판매 비중을 기준으로 메뉴별 권장가를 자동 제안합니다.
+                목표 월 순이익을 넣으면 현재 판매 비중을 기준으로 메뉴별 권장가를 다시 제안합니다.
               </p>
             </div>
 
