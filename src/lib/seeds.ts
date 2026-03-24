@@ -11,8 +11,8 @@ import type {
   CategoryState,
   MenuState,
   PriceCatalogItem,
+  PricingStrategy,
   StoreState,
-  TemplateDefinition,
   VatMode,
   WizardState,
 } from "@/lib/types";
@@ -26,7 +26,7 @@ const BASE_INGREDIENT_CATALOG: PriceCatalogItem[] = [
   { id: "strawberryBase", label: "딸기청", unit: "ml", pricePerUnit: 16, enabled: true },
   { id: "yuzuBase", label: "유자청", unit: "ml", pricePerUnit: 17, enabled: true },
   { id: "greenGrapeBase", label: "청포도청", unit: "ml", pricePerUnit: 18, enabled: true },
-  { id: "citrusBase", label: "귤/청귤청", unit: "ml", pricePerUnit: 18, enabled: true },
+  { id: "citrusBase", label: "청귤청", unit: "ml", pricePerUnit: 18, enabled: true },
   { id: "water", label: "물", unit: "ml", pricePerUnit: 0.25, enabled: true },
   { id: "ice", label: "얼음", unit: "g", pricePerUnit: 0.9, enabled: true },
   {
@@ -39,7 +39,7 @@ const BASE_INGREDIENT_CATALOG: PriceCatalogItem[] = [
   },
   {
     id: "toppingPowder",
-    label: "토핑/파우더",
+    label: "토핑 파우더",
     unit: "g",
     pricePerUnit: 22,
     enabled: true,
@@ -55,8 +55,8 @@ const BASE_INGREDIENT_CATALOG: PriceCatalogItem[] = [
 ];
 
 const BASE_PACKAGING_CATALOG: PriceCatalogItem[] = [
-  { id: "hotCup", label: "컵(HOT)", unit: "ea", pricePerUnit: 95, enabled: true },
-  { id: "iceCup", label: "컵(ICE)", unit: "ea", pricePerUnit: 110, enabled: true },
+  { id: "hotCup", label: "HOT 컵", unit: "ea", pricePerUnit: 95, enabled: true },
+  { id: "iceCup", label: "ICE 컵", unit: "ea", pricePerUnit: 110, enabled: true },
   { id: "lid", label: "뚜껑", unit: "ea", pricePerUnit: 45, enabled: true },
   { id: "straw", label: "빨대", unit: "ea", pricePerUnit: 18, enabled: true },
   { id: "holder", label: "홀더", unit: "ea", pricePerUnit: 35, enabled: true },
@@ -104,7 +104,7 @@ const BASE_MENUS: MenuState[] = [
     variants: {
       hot: {
         enabled: true,
-        price: 2500,
+        price: 0,
         cupSizeMl: 60,
         shotCount: 2,
         recipe: [
@@ -125,7 +125,7 @@ const BASE_MENUS: MenuState[] = [
     variants: {
       hot: {
         enabled: true,
-        price: 2500,
+        price: 0,
         cupSizeMl: 240,
         shotCount: 2,
         recipe: [
@@ -136,7 +136,7 @@ const BASE_MENUS: MenuState[] = [
       },
       ice: {
         enabled: true,
-        price: 2800,
+        price: 0,
         cupSizeMl: 470,
         shotCount: 2,
         recipe: [
@@ -158,7 +158,7 @@ const BASE_MENUS: MenuState[] = [
     variants: {
       hot: {
         enabled: true,
-        price: 4300,
+        price: 0,
         cupSizeMl: 320,
         shotCount: 2,
         recipe: [
@@ -169,7 +169,7 @@ const BASE_MENUS: MenuState[] = [
       },
       ice: {
         enabled: true,
-        price: 4700,
+        price: 0,
         cupSizeMl: 500,
         shotCount: 2,
         recipe: [
@@ -191,7 +191,7 @@ const BASE_MENUS: MenuState[] = [
     variants: {
       hot: {
         enabled: true,
-        price: 4800,
+        price: 0,
         cupSizeMl: 320,
         shotCount: 2,
         recipe: [
@@ -203,7 +203,7 @@ const BASE_MENUS: MenuState[] = [
       },
       ice: {
         enabled: true,
-        price: 5200,
+        price: 0,
         cupSizeMl: 500,
         shotCount: 2,
         recipe: [
@@ -226,7 +226,7 @@ const BASE_MENUS: MenuState[] = [
     variants: {
       hot: {
         enabled: true,
-        price: 5300,
+        price: 0,
         cupSizeMl: 320,
         shotCount: 2,
         recipe: [
@@ -239,7 +239,7 @@ const BASE_MENUS: MenuState[] = [
       },
       ice: {
         enabled: true,
-        price: 5700,
+        price: 0,
         cupSizeMl: 500,
         shotCount: 2,
         recipe: [
@@ -263,7 +263,7 @@ const BASE_MENUS: MenuState[] = [
     variants: {
       hot: {
         enabled: true,
-        price: 5300,
+        price: 0,
         cupSizeMl: 320,
         shotCount: 2,
         recipe: [
@@ -276,7 +276,7 @@ const BASE_MENUS: MenuState[] = [
       },
       ice: {
         enabled: true,
-        price: 5800,
+        price: 0,
         cupSizeMl: 500,
         shotCount: 2,
         recipe: [
@@ -300,7 +300,7 @@ const BASE_MENUS: MenuState[] = [
     variants: {
       hot: {
         enabled: true,
-        price: 4400,
+        price: 0,
         cupSizeMl: 300,
         shotCount: 2,
         recipe: [
@@ -322,7 +322,7 @@ const BASE_MENUS: MenuState[] = [
     variants: {
       ice: {
         enabled: true,
-        price: 5600,
+        price: 0,
         cupSizeMl: 580,
         shotCount: 0,
         recipe: [
@@ -344,7 +344,7 @@ const BASE_MENUS: MenuState[] = [
     variants: {
       ice: {
         enabled: true,
-        price: 5400,
+        price: 0,
         cupSizeMl: 580,
         shotCount: 0,
         recipe: [
@@ -366,7 +366,7 @@ const BASE_MENUS: MenuState[] = [
     variants: {
       ice: {
         enabled: true,
-        price: 5400,
+        price: 0,
         cupSizeMl: 580,
         shotCount: 0,
         recipe: [
@@ -380,7 +380,7 @@ const BASE_MENUS: MenuState[] = [
   },
   {
     id: "citrusDrink",
-    name: "귤/청귤 음료",
+    name: "귤 / 청귤 음료",
     group: "청음료",
     temperatureSupport: "ice",
     share: 6,
@@ -388,7 +388,7 @@ const BASE_MENUS: MenuState[] = [
     variants: {
       ice: {
         enabled: true,
-        price: 5600,
+        price: 0,
         cupSizeMl: 580,
         shotCount: 0,
         recipe: [
@@ -405,7 +405,7 @@ const BASE_MENUS: MenuState[] = [
 function createCategoryState(key: CategoryKey): CategoryState {
   return {
     enabled: true,
-    collapsed: key !== "sales",
+    collapsed: true,
     showAdvanced: false,
     useBundle: key === "labor" || key === "fixedCosts" || key === "loss",
     locked: CATEGORY_META[key].locked,
@@ -438,8 +438,8 @@ function createBaseStore(): StoreState {
       orderFixedCost: 45,
     },
     labor: {
-      salariedPayroll: 4_300_000,
-      partTimeMonthlyPayroll: 3_300_000,
+      salariedPayroll: 4_700_000,
+      partTimeMonthlyPayroll: 3_100_000,
       partTimeHourlyWage: 11_000,
       partTimeShiftCount: 26,
       partTimeHoursPerShift: 10,
@@ -448,7 +448,7 @@ function createBaseStore(): StoreState {
       welfareCost: 220_000,
     },
     fixedCosts: {
-      monthlyRent: 2_800_000,
+      monthlyRent: 3_200_000,
       maintenanceFee: 380_000,
       utilitiesBundle: 580_000,
       operationsBundle: 420_000,
@@ -480,7 +480,6 @@ function applyIngredientTargetPricing(
   menus: MenuState[],
   ingredients: PriceCatalogItem[],
   targetIngredientRate: number,
-  multiplier = 1,
 ) {
   const ingredientMap = new Map(ingredients.map((item) => [item.id, item]));
 
@@ -493,12 +492,10 @@ function applyIngredientTargetPricing(
           ? {
               ...variant,
               price: roundToUnit(
-                (variant.recipe.reduce((sum, ingredient) => {
+                variant.recipe.reduce((sum, ingredient) => {
                   const item = ingredientMap.get(ingredient.itemId);
                   return sum + ingredient.amount * (item?.pricePerUnit ?? 0);
-                }, 0) /
-                  Math.max(targetIngredientRate, 0.01)) *
-                  multiplier,
+                }, 0) / Math.max(targetIngredientRate, 0.01),
                 10,
               ),
             }
@@ -508,96 +505,32 @@ function applyIngredientTargetPricing(
   }));
 }
 
-function applyCatalogMultiplier(items: PriceCatalogItem[], multiplier: number) {
-  return items.map((item) => ({
-    ...item,
-    pricePerUnit: Math.round(item.pricePerUnit * multiplier * 100) / 100,
-  }));
-}
-
-function applyTemplateToStore(store: StoreState, templateId: string) {
-  const next = deepClone(store);
-
-  switch (templateId) {
-    case "takeout":
-      next.sales.monthlySales = 31_000_000;
-      next.sales.annualSales = next.sales.monthlySales * 12;
-      next.sales.averageTicket = 4_900;
-      next.sales.visitorsPerDay = 275;
-      next.sales.takeoutRatio = 0.82;
-      next.fixedCosts.monthlyRent = 2_200_000;
-      next.fixedCosts.utilitiesBundle = 510_000;
-      next.fixedCosts.operationsBundle = 360_000;
-      next.fixedCosts.suppliesBundle = 270_000;
-      next.variableCosts.platformFeeRate = 0.013;
-      break;
-    case "mid-range":
-      next.sales.monthlySales = 45_000_000;
-      next.sales.annualSales = next.sales.monthlySales * 12;
-      next.sales.averageTicket = 6_100;
-      next.sales.visitorsPerDay = 265;
-      next.sales.takeoutRatio = 0.54;
-      next.fixedCosts.monthlyRent = 3_200_000;
-      next.fixedCosts.marketingCost = 320_000;
-      next.labor.salariedPayroll = 4_700_000;
-      break;
-    case "premium":
-      next.sales.monthlySales = 62_000_000;
-      next.sales.annualSales = next.sales.monthlySales * 12;
-      next.sales.averageTicket = 7_600;
-      next.sales.visitorsPerDay = 300;
-      next.sales.takeoutRatio = 0.46;
-      next.fixedCosts.monthlyRent = 4_500_000;
-      next.fixedCosts.utilitiesBundle = 840_000;
-      next.fixedCosts.operationsBundle = 640_000;
-      next.labor.salariedPayroll = 5_500_000;
-      next.labor.partTimeMonthlyPayroll = 4_100_000;
-      break;
-    case "basic-cafe":
-    default:
-      next.sales.monthlySales = 36_000_000;
-      next.sales.annualSales = next.sales.monthlySales * 12;
-      next.sales.averageTicket = 5_400;
-      next.sales.visitorsPerDay = 250;
-      next.sales.takeoutRatio = 0.58;
-      break;
-  }
-
-  return next;
-}
-
 export function buildInitialState(options?: {
   salesBasis?: WizardState["salesBasis"];
   vatMode?: VatMode;
   templateId?: string;
+  completed?: boolean;
+  pricingStrategy?: PricingStrategy;
 }): AppState {
   const templateId = options?.templateId ?? TEMPLATES[0].id;
-  const ingredientMultiplier =
-    templateId === "premium" ? 1.12 : templateId === "mid-range" ? 1.05 : 1;
-  const ingredients = applyCatalogMultiplier(BASE_INGREDIENT_CATALOG, ingredientMultiplier);
-  const packaging = applyCatalogMultiplier(BASE_PACKAGING_CATALOG, 1);
-  const store = applyTemplateToStore(createBaseStore(), templateId);
+  const ingredients = deepClone(BASE_INGREDIENT_CATALOG);
+  const packaging = deepClone(BASE_PACKAGING_CATALOG);
+  const store = createBaseStore();
   store.menus = applyIngredientTargetPricing(
     store.menus,
     ingredients,
     DEFAULT_TARGET_INGREDIENT_RATE,
-    templateId === "takeout"
-      ? 0.97
-      : templateId === "mid-range"
-        ? 1.08
-        : templateId === "premium"
-          ? 1.18
-          : 1,
   );
 
-  return {
+  const initialState: AppState = {
     wizard: {
       salesBasis: options?.salesBasis ?? "monthly",
       vatMode: options?.vatMode ?? "inclusive",
       templateId,
-      completed: false,
+      completed: options?.completed ?? false,
     },
-    analysisMode: "current",
+    pricingStrategy: options?.pricingStrategy ?? "default",
+    ingredientRateMode: "recommended",
     targetMonthlyNetProfit: DEFAULT_TARGET_MONTHLY_NET_PROFIT,
     targetIngredientRate: DEFAULT_TARGET_INGREDIENT_RATE,
     priceCatalog: {
@@ -606,26 +539,24 @@ export function buildInitialState(options?: {
     },
     store,
   };
-}
 
-export function getTemplateById(templateId: string): TemplateDefinition {
-  return TEMPLATES.find((template) => template.id === templateId) ?? TEMPLATES[0];
+  return initialState;
 }
 
 export function rebaseStateFromTemplate(
   state: AppState,
-  templateId: string,
+  _templateId: string,
   overrides?: Partial<Pick<WizardState, "salesBasis" | "vatMode">>,
 ) {
   const next = buildInitialState({
     salesBasis: overrides?.salesBasis ?? state.wizard.salesBasis,
     vatMode: overrides?.vatMode ?? state.wizard.vatMode,
-    templateId,
+    completed: state.wizard.completed,
+    pricingStrategy: state.pricingStrategy,
   });
 
-  next.wizard.completed = state.wizard.completed;
-  next.analysisMode = state.analysisMode;
   next.targetMonthlyNetProfit = state.targetMonthlyNetProfit;
+  next.ingredientRateMode = state.ingredientRateMode;
   next.targetIngredientRate = state.targetIngredientRate;
   return next;
 }

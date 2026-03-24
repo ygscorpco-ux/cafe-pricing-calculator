@@ -1,5 +1,10 @@
-import { GOAL_THRESHOLDS, VAT_RATE } from "@/lib/constants";
-import { roundToUnit } from "@/lib/utils";
+import {
+  GOAL_THRESHOLDS,
+  RECOMMENDED_INGREDIENT_RATE_RANGE,
+  VAT_RATE,
+} from "@/lib/constants";
+import { formatCurrency } from "@/lib/format";
+import { clamp, roundToUnit } from "@/lib/utils";
 import type {
   AppCalculationResult,
   AppState,
@@ -8,7 +13,6 @@ import type {
   IngredientBudgetItem,
   MenuResult,
   MenuState,
-  StoreCalculationResult,
   Temperature,
 } from "@/lib/types";
 
@@ -20,7 +24,7 @@ interface MenuInternal {
 }
 
 interface StoreBaseResult {
-  result: StoreCalculationResult;
+  result: AppCalculationResult["result"];
   menuInternals: MenuInternal[];
 }
 
@@ -116,7 +120,7 @@ function calculateFeasibility(
   if (increaseRate <= GOAL_THRESHOLDS.stretch) {
     return {
       status: "stretch",
-      label: "주의 필요",
+      label: "조정 필요",
       averageIncreaseRate: increaseRate,
       requiredMonthlyGap,
     };
@@ -124,7 +128,7 @@ function calculateFeasibility(
 
   return {
     status: "hard",
-    label: "가격 재설계 필요",
+    label: "조정 폭 큼",
     averageIncreaseRate: increaseRate,
     requiredMonthlyGap,
   };
@@ -185,14 +189,14 @@ function calculateFixedCost(store: AppState["store"], costs: CostMap) {
     ["관리비", store.fixedCosts.maintenanceFee],
     ["공과금 묶음", store.fixedCosts.utilitiesBundle],
     ["수선비", store.fixedCosts.repairCost],
-    ["세무/법무/노무", store.fixedCosts.professionalServices],
+    ["세무 / 법무 / 노무", store.fixedCosts.professionalServices],
     ["보험료", store.fixedCosts.insuranceFee],
     ["마케팅비", store.fixedCosts.marketingCost],
-    ["청소/방역/세탁/폐기", store.fixedCosts.cleaningWasteLaundry],
-    ["인터넷/전화/CCTV/음원", store.fixedCosts.telecomMusicCctv],
-    ["POS/키오스크", store.fixedCosts.posKiosk],
-    ["장비 감가상각/리스", store.fixedCosts.equipmentLeaseDepreciation],
-    ["정수필터/세정 관리", store.fixedCosts.waterFilterCleaning],
+    ["청소 / 방역 / 세탁 / 쓰레기 처리", store.fixedCosts.cleaningWasteLaundry],
+    ["인터넷 / 전화 / CCTV / 음원 사용료", store.fixedCosts.telecomMusicCctv],
+    ["POS / 키오스크", store.fixedCosts.posKiosk],
+    ["장비 감가상각 / 리스", store.fixedCosts.equipmentLeaseDepreciation],
+    ["정수필터 / 세정제 / 연수기", store.fixedCosts.waterFilterCleaning],
     ["기타 소모품 묶음", store.fixedCosts.suppliesBundle],
   ] as const;
 
@@ -242,10 +246,74 @@ function mergeRecommendedPrices(
   };
 }
 
+function calculateRecommendedIngredientRate(state: AppState, store: AppState["store"]) {
+  const monthlySalesGross = pickMonthlySales(store, state.wizard);
+  const monthlySalesSupply = grossToSupply(monthlySalesGross, state.wizard.vatMode);
+  const fixedPressure =
+    monthlySalesSupply > 0
+      ? (store.labor.salariedPayroll +
+          store.labor.partTimeMonthlyPayroll +
+          store.fixedCosts.monthlyRent +
+          store.fixedCosts.utilitiesBundle +
+          store.fixedCosts.operationsBundle +
+          store.fixedCosts.suppliesBundle) /
+        monthlySalesSupply
+      : 0;
+
+  let base =
+    state.pricingStrategy === "conservative"
+      ? 0.32
+      : state.pricingStrategy === "aggressive"
+        ? 0.28
+        : 0.3;
+
+  if (fixedPressure > 0.28) {
+    base -= 0.005;
+  }
+
+  if (store.sales.takeoutRatio >= 0.65 || store.sales.cardRatio >= 0.9) {
+    base -= 0.005;
+  }
+
+  if (store.sales.averageTicket >= 6500 && fixedPressure < 0.2) {
+    base += 0.005;
+  }
+
+  return clamp(
+    Math.round(base * 1000) / 1000,
+    RECOMMENDED_INGREDIENT_RATE_RANGE.min,
+    RECOMMENDED_INGREDIENT_RATE_RANGE.max,
+  );
+}
+
+function getAppliedIngredientRate(state: AppState, recommendedIngredientRate: number) {
+  return state.ingredientRateMode === "manual"
+    ? state.targetIngredientRate
+    : recommendedIngredientRate;
+}
+
+function getMenuStatus(
+  priceGap: number,
+  directIngredientRate: number,
+  appliedIngredientRate: number,
+  costRate: number,
+) {
+  if (priceGap > 120 || directIngredientRate > appliedIngredientRate + 0.015 || costRate > 0.42) {
+    return { status: "increase" as const, label: "가격 인상 필요" };
+  }
+
+  if (priceGap < -120 && costRate < 0.34) {
+    return { status: "strong" as const, label: "수익성 우수" };
+  }
+
+  return { status: "stable" as const, label: "유지 가능" };
+}
+
 function calculateMenuResults(
   state: AppState,
   store: AppState["store"],
   costs: CostMap,
+  appliedIngredientRate: number,
 ) {
   const monthlySalesGross = pickMonthlySales(store, state.wizard);
   const shareRatios = normalizeShares(store.menus);
@@ -355,8 +423,8 @@ function calculateMenuResults(
               (recipeCost + packagingUnitCost + variableUnitCost) * store.loss.freeDrinkRate;
 
         const ingredientRecommendedPrice =
-          recipeCost > 0 && state.targetIngredientRate > 0
-            ? roundToUnit(recipeCost / state.targetIngredientRate, 10)
+          recipeCost > 0 && appliedIngredientRate > 0
+            ? roundToUnit(recipeCost / appliedIngredientRate, 10)
             : grossPrice;
 
         const unitContribution =
@@ -378,12 +446,12 @@ function calculateMenuResults(
         if (store.categories.variableCosts.enabled) {
           addCost(
             costs,
-            "카드수수료",
+            "카드 수수료",
             supplyPrice * variantUnits * store.sales.cardRatio * store.variableCosts.cardFeeRate,
           );
           addCost(
             costs,
-            "PG/VAN/정산 비용",
+            "PG / VAN / 정산 비용",
             supplyPrice *
               variantUnits *
               store.sales.cardRatio *
@@ -399,13 +467,13 @@ function calculateMenuResults(
           );
           addCost(
             costs,
-            "할인/적립 비용",
+            "할인 / 적립 비용",
             supplyPrice * variantUnits * store.variableCosts.loyaltyDiscountRate,
           );
         }
 
         if (store.categories.loss.enabled) {
-          addCost(costs, "로스/폐기", lossUnitCost * variantUnits);
+          addCost(costs, "로스 / 폐기", lossUnitCost * variantUnits);
         }
       },
     );
@@ -421,7 +489,7 @@ function calculateMenuResults(
         : 0;
     const directIngredientRate =
       currentAveragePrice > 0 ? directCost / currentAveragePrice : 0;
-    const targetIngredientBudget = currentAveragePrice * state.targetIngredientRate;
+    const targetIngredientBudget = currentAveragePrice * appliedIngredientRate;
     const ingredientBudgetItems: IngredientBudgetItem[] =
       directCost > 0
         ? [...ingredientBudgetMap.entries()]
@@ -443,6 +511,14 @@ function calculateMenuResults(
     monthlyVariableCost += monthlyMenuVariableCost;
     monthlyLossCost += monthlyMenuLossCost;
 
+    const priceGap = ingredientRecommendedAveragePrice - currentAveragePrice;
+    const menuStatus = getMenuStatus(
+      priceGap,
+      directIngredientRate,
+      appliedIngredientRate,
+      costRate,
+    );
+
     const menuResult: MenuResult = {
       menuId: menu.id,
       name: menu.name,
@@ -454,7 +530,10 @@ function calculateMenuResults(
       currentPrices,
       recommendedAveragePrice: ingredientRecommendedAveragePrice,
       recommendedPrices: ingredientRecommendedPrices,
-      priceGap: ingredientRecommendedAveragePrice - currentAveragePrice,
+      priceGap,
+      priceGapLabel: `${priceGap >= 0 ? "+" : ""}${formatCurrency(priceGap)}/잔`,
+      status: menuStatus.status,
+      statusLabel: menuStatus.label,
       hotShare: menu.hotShare,
       directCost,
       packagingCost,
@@ -492,7 +571,10 @@ function calculateMenuResults(
   };
 }
 
-function calculateStoreBaseResult(state: AppState): StoreBaseResult {
+function calculateStoreBaseResult(
+  state: AppState,
+  appliedIngredientRate: number,
+): StoreBaseResult {
   const store = state.store;
   const costs = new Map<string, number>();
   const monthlySalesGross = pickMonthlySales(store, state.wizard);
@@ -502,7 +584,7 @@ function calculateStoreBaseResult(state: AppState): StoreBaseResult {
     store.sales.visitorsPerDay *
     store.sales.operatingDaysPerMonth;
   const monthlyCustomers = store.sales.visitorsPerDay * store.sales.operatingDaysPerMonth;
-  const menuComputation = calculateMenuResults(state, store, costs);
+  const menuComputation = calculateMenuResults(state, store, costs, appliedIngredientRate);
   const monthlyLaborCost = calculateLaborCost(store, costs);
   const monthlyFixedCost = calculateFixedCost(store, costs);
   const monthlyNetProfit =
@@ -515,8 +597,18 @@ function calculateStoreBaseResult(state: AppState): StoreBaseResult {
   const currentPrices = menuComputation.menuResults.map(
     (menuResult) => menuResult.currentAveragePrice,
   );
+  const contributionPerCustomer =
+    monthlyCustomers > 0 ? menuComputation.monthlyContribution / monthlyCustomers : 0;
+  const requiredVisitorsPerDay =
+    contributionPerCustomer > 0 && store.sales.operatingDaysPerMonth > 0
+      ? Math.ceil(
+          (monthlyLaborCost + monthlyFixedCost + state.targetMonthlyNetProfit) /
+            contributionPerCustomer /
+            store.sales.operatingDaysPerMonth,
+        )
+      : store.sales.visitorsPerDay;
 
-  const result: StoreCalculationResult = {
+  const result = {
     monthlySalesGross,
     monthlySalesSupply,
     derivedMonthlySalesGross,
@@ -530,6 +622,7 @@ function calculateStoreBaseResult(state: AppState): StoreBaseResult {
     monthlyLaborCost,
     monthlyFixedCost,
     requiredAverageTicket,
+    requiredVisitorsPerDay,
     menuResults: menuComputation.menuResults,
     topCostDrivers: toArrayMap(costs).slice(0, 6),
     feasibility: calculateFeasibility(0, currentPrices, currentPrices),
@@ -545,7 +638,7 @@ function applyTargetRecommendations(
   base: StoreBaseResult,
   targetGap: number,
   vatMode: AppState["wizard"]["vatMode"],
-): StoreCalculationResult {
+): AppCalculationResult["result"] {
   const menuResults = base.menuInternals.map((internal) => {
     const menuGap =
       base.result.monthlySalesGross <= 0
@@ -572,6 +665,7 @@ function applyTargetRecommendations(
       internal.result.ingredientRecommendedPrices,
       goalRecommendedPrices,
     );
+    const priceGap = mergedRecommendation.recommendedAveragePrice - internal.result.currentAveragePrice;
 
     return {
       ...internal.result,
@@ -579,7 +673,8 @@ function applyTargetRecommendations(
       goalRecommendedPrices,
       recommendedAveragePrice: mergedRecommendation.recommendedAveragePrice,
       recommendedPrices: mergedRecommendation.recommendedPrices,
-      priceGap: mergedRecommendation.recommendedAveragePrice - internal.result.currentAveragePrice,
+      priceGap,
+      priceGapLabel: `${priceGap >= 0 ? "+" : ""}${formatCurrency(priceGap)}/잔`,
     };
   });
 
@@ -596,18 +691,54 @@ function applyTargetRecommendations(
   };
 }
 
+function getPriorityMenus(menuResults: MenuResult[]) {
+  return menuResults
+    .slice()
+    .sort((left, right) => {
+      const leftScore =
+        Math.max(left.priceGap, 0) + left.directIngredientRate * 1000 + left.costRate * 600;
+      const rightScore =
+        Math.max(right.priceGap, 0) + right.directIngredientRate * 1000 + right.costRate * 600;
+      return rightScore - leftScore;
+    })
+    .slice(0, 3);
+}
+
 export function calculateAppState(state: AppState): AppCalculationResult {
-  const base = calculateStoreBaseResult(state);
+  const recommendedIngredientRate = calculateRecommendedIngredientRate(state, state.store);
+  const appliedIngredientRate = getAppliedIngredientRate(state, recommendedIngredientRate);
+  const base = calculateStoreBaseResult(state, appliedIngredientRate);
   const targetGap = state.targetMonthlyNetProfit - base.result.monthlyNetProfit;
   const result = applyTargetRecommendations(base, targetGap, state.wizard.vatMode);
+  const totalUnits = result.menuResults.reduce((sum, menuResult) => sum + menuResult.unitsSold, 0);
+  const priorityMenus = getPriorityMenus(result.menuResults);
+  const averagePriceDeltaPerCup =
+    totalUnits > 0
+      ? result.menuResults.reduce(
+          (sum, menuResult) => sum + menuResult.priceGap * menuResult.unitsSold,
+          0,
+        ) / totalUnits
+      : 0;
 
   return {
     totals: {
       monthlySalesGross: result.monthlySalesGross,
       annualSalesGross: result.monthlySalesGross * 12,
-      monthlyNetProfit: base.result.monthlyNetProfit,
-      annualNetProfit: base.result.monthlyNetProfit * 12,
+      monthlyNetProfit: result.monthlyNetProfit,
+      annualNetProfit: result.annualNetProfit,
       targetMonthlyGap: targetGap,
+    },
+    appliedIngredientRate,
+    recommendedIngredientRate,
+    recommendedIngredientRateRange: RECOMMENDED_INGREDIENT_RATE_RANGE,
+    requiredVisitorsPerDay: result.requiredVisitorsPerDay,
+    averagePriceDeltaPerCup,
+    priorityMenuNames: priorityMenus.map((menu) => menu.name),
+    headlineSummary: {
+      monthlyNetProfit: result.monthlyNetProfit,
+      targetGap,
+      averagePriceDeltaPerCup,
+      priorityMenuNames: priorityMenus.map((menu) => menu.name),
     },
     result,
     topCostDrivers: result.topCostDrivers,

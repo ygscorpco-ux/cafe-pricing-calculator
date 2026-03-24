@@ -1,13 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import {
-  ChevronDown,
-  ChevronUp,
-  CircleHelp,
-  PanelLeftClose,
-  Sparkles,
-} from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronUp, Lock, PanelRightClose, Save, Sparkles, Trash2, Unlock } from "lucide-react";
 
 import { NumericInput } from "@/components/numeric-input";
 import {
@@ -18,18 +12,25 @@ import {
   SALES_FIELDS,
   VARIABLE_COST_FIELDS,
 } from "@/lib/constants";
+import { formatPercent } from "@/lib/format";
 import { cn, percentFromRatio, ratioFromPercentInput } from "@/lib/utils";
 import type { AppAction } from "@/lib/app-state";
-import type { AppState, CategoryKey, FieldDefinition, PriceCatalogItem } from "@/lib/types";
+import type { AppCalculationResult, AppState, CategoryKey, FieldDefinition, PriceCatalogItem, SavedScenario } from "@/lib/types";
 
 interface InputTrayProps {
   state: AppState;
-  store: AppState["store"];
+  result: AppCalculationResult;
   dispatch: React.Dispatch<AppAction>;
   onClose: () => void;
+  savedScenarios: SavedScenario[];
+  selectedScenarioId: string;
+  onSelectScenario: (id: string) => void;
+  onSaveScenario: () => void;
+  onLoadScenario: () => void;
+  onDeleteScenario: () => void;
 }
 
-type SettingsView = "basics" | "menuCosts" | "operations";
+type SettingsView = "fixed" | "variable" | "catalog" | "loss" | "pricing";
 
 function SegmentButton({
   active,
@@ -86,45 +87,6 @@ function ToggleSwitch({
   );
 }
 
-function HelpTooltip({ content }: { content: string }) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [open]);
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        aria-label="도움말 보기"
-        aria-expanded={open}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#eef3ff] text-[#1b4797] transition hover:bg-[#dde8ff]"
-      >
-        <CircleHelp className="h-3 w-3" />
-      </button>
-      {open ? (
-        <div className="absolute left-0 top-6 z-20 w-56 rounded-2xl border border-[#d9e3f6] bg-white p-3 text-[11px] leading-5 text-[#516281] shadow-[0_16px_30px_rgba(27,71,151,0.12)]">
-          {content}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 function FieldInput({
   label,
   description,
@@ -133,7 +95,7 @@ function FieldInput({
   unitLabel,
   onChange,
 }: {
-  label?: string;
+  label: string;
   description?: string;
   value: number;
   kind: FieldDefinition<string>["kind"];
@@ -145,12 +107,10 @@ function FieldInput({
 
   return (
     <label className="block">
-      {label ? (
-        <div className="mb-1.5 flex items-center gap-1 text-xs font-medium text-[#5c6f90]">
-          <span>{label}</span>
-          {description ? <HelpTooltip content={description} /> : null}
-        </div>
-      ) : null}
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-[#5c6f90]">{label}</span>
+        {description ? <span className="text-[11px] text-[#7c8daa]">{description}</span> : null}
+      </div>
       <NumericInput
         value={displayValue}
         onChange={(nextValue) =>
@@ -165,26 +125,19 @@ function FieldInput({
 function SectionCard({
   categoryKey,
   category,
-  titleExtra,
   onToggle,
   onCollapse,
-  onBundleToggle,
-  onAdvancedToggle,
   children,
 }: {
   categoryKey: CategoryKey;
   category: AppState["store"]["categories"][CategoryKey];
-  titleExtra?: React.ReactNode;
   onToggle: (next: boolean) => void;
   onCollapse: () => void;
-  onBundleToggle?: (next: boolean) => void;
-  onAdvancedToggle?: (next: boolean) => void;
   children: React.ReactNode;
 }) {
   const meta = CATEGORY_META[categoryKey];
-
   return (
-    <section className="rounded-[28px] border border-[#d9e3f6] bg-white p-4 shadow-[0_14px_34px_rgba(27,71,151,0.06)]">
+    <section className="rounded-[26px] border border-[#d9e3f6] bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[#13233f]">{meta.label}</p>
@@ -197,39 +150,42 @@ function SectionCard({
             onClick={onCollapse}
             className="rounded-full bg-[#eef3ff] p-2 text-[#1b4797]"
           >
-            {category.collapsed ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
-            )}
+            {category.collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           </button>
         </div>
       </div>
-
-      {titleExtra ? <div className="mt-3">{titleExtra}</div> : null}
-
-      {!category.collapsed ? (
-        <>
-          {meta.allowBundle ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              <SegmentButton active={category.useBundle} onClick={() => onBundleToggle?.(true)}>
-                묶음 입력
-              </SegmentButton>
-              <SegmentButton active={!category.useBundle} onClick={() => onBundleToggle?.(false)}>
-                세부 입력
-              </SegmentButton>
-              <SegmentButton
-                active={category.showAdvanced}
-                onClick={() => onAdvancedToggle?.(!category.showAdvanced)}
-              >
-                고급 설정 {category.showAdvanced ? "숨기기" : "보기"}
-              </SegmentButton>
-            </div>
-          ) : null}
-          <div className="mt-4">{children}</div>
-        </>
-      ) : null}
+      {!category.collapsed ? <div className="mt-4">{children}</div> : null}
     </section>
+  );
+}
+
+function FieldsGroup<T extends string>({
+  fields,
+  values,
+  update,
+  showAdvanced,
+}: {
+  fields: FieldDefinition<T>[];
+  values: Record<T, number>;
+  update: (field: T, value: number) => void;
+  showAdvanced: boolean;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {fields
+        .filter((field) => showAdvanced || !field.advanced)
+        .map((field) => (
+          <FieldInput
+            key={field.key}
+            label={field.label}
+            description={field.description}
+            value={values[field.key]}
+            kind={field.kind}
+            unitLabel={field.unitLabel}
+            onChange={(value) => update(field.key, value)}
+          />
+        ))}
+    </div>
   );
 }
 
@@ -264,316 +220,265 @@ function PriceCatalogEditor({
                 <p className="text-[11px] text-[#7183a3]">{item.unit} 기준 단가</p>
               </div>
             </div>
-            <FieldInput
-              value={item.pricePerUnit}
-              kind="currency"
-              unitLabel={item.unit}
-              onChange={(value) => onPriceChange(item.id, value)}
-            />
+            <NumericInput value={item.pricePerUnit} onChange={(value) => onPriceChange(item.id, value)} suffix="원" />
           </div>
         ))}
     </div>
   );
 }
 
-function FieldsGroup<T extends string>({
-  fields,
-  values,
-  update,
-  showAdvanced,
-}: {
-  fields: FieldDefinition<T>[];
-  values: Record<T, number>;
-  update: (field: T, value: number) => void;
-  showAdvanced: boolean;
-}) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {fields
-        .filter((field) => showAdvanced || !field.advanced)
-        .map((field) => (
-          <FieldInput
-            key={field.key}
-            label={field.label}
-            description={field.description}
-            value={values[field.key]}
-            kind={field.kind}
-            unitLabel={field.unitLabel}
-            onChange={(value) => update(field.key, value)}
-          />
-        ))}
-    </div>
-  );
-}
-
-export function InputTray({ state, store, dispatch, onClose }: InputTrayProps) {
-  const [settingsView, setSettingsView] = useState<SettingsView>("basics");
-  const storeCategory = store.categories;
+export function InputTray({
+  state,
+  result,
+  dispatch,
+  onClose,
+  savedScenarios,
+  selectedScenarioId,
+  onSelectScenario,
+  onSaveScenario,
+  onLoadScenario,
+  onDeleteScenario,
+}: InputTrayProps) {
+  const [settingsView, setSettingsView] = useState<SettingsView>("fixed");
+  const [showCatalogAdvanced, setShowCatalogAdvanced] = useState(false);
+  const [showLaborAdvanced, setShowLaborAdvanced] = useState(false);
+  const [showFixedAdvanced, setShowFixedAdvanced] = useState(false);
+  const [showLossAdvanced, setShowLossAdvanced] = useState(false);
+  const store = state.store;
 
   return (
-    <section className="space-y-4">
-      <div className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_44px_rgba(27,71,151,0.08)]">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+    <div className="flex h-full flex-col bg-white">
+      <div className="border-b border-[#e0e8f8] px-5 py-4">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6c7fa5]">
-              Detail Settings
+              Advanced Settings
             </p>
-            <h2 className="mt-2 text-lg font-semibold text-[#13233f]">필요할 때만 여는 상세 설정</h2>
+            <h2 className="mt-2 text-lg font-semibold text-[#13233f]">고급 설정 패널</h2>
             <p className="mt-1 text-sm text-[#61728f]">
-              초보자는 핵심값만 보고, 세부 단가나 운영비는 필요한 순간에만 펼쳐서 수정할 수
-              있게 3묶음으로 정리했습니다.
+              기본 사용자는 결과만 보고, 필요할 때만 비용과 단가를 더 손봅니다.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="hidden xl:inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-3 py-2 text-xs font-semibold text-[#1b4797]"
+            className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-3 py-2 text-sm font-semibold text-[#1b4797]"
           >
-            <PanelLeftClose className="h-3.5 w-3.5" />
-            상세 설정 닫기
+            <PanelRightClose className="h-4 w-4" />
+            닫기
           </button>
         </div>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
-          <button
-            type="button"
-            onClick={() => setSettingsView("basics")}
-            className={cn(
-              "rounded-2xl border px-3 py-3 text-left transition",
-              settingsView === "basics"
-                ? "border-[#1b4797] bg-[#f4f8ff]"
-                : "border-[#d9e3f6] bg-white hover:border-[#a9bfe8]",
-            )}
-          >
-            <p className="text-sm font-semibold text-[#13233f]">기본 입력</p>
-            <p className="mt-1 text-xs text-[#61728f]">A. 매출 기준</p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSettingsView("menuCosts")}
-            className={cn(
-              "rounded-2xl border px-3 py-3 text-left transition",
-              settingsView === "menuCosts"
-                ? "border-[#1b4797] bg-[#f4f8ff]"
-                : "border-[#d9e3f6] bg-white hover:border-[#a9bfe8]",
-            )}
-          >
-            <p className="text-sm font-semibold text-[#13233f]">메뉴·원가</p>
-            <p className="mt-1 text-xs text-[#61728f]">B. 메뉴 스펙 + C~D 단가</p>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSettingsView("operations")}
-            className={cn(
-              "rounded-2xl border px-3 py-3 text-left transition",
-              settingsView === "operations"
-                ? "border-[#1b4797] bg-[#f4f8ff]"
-                : "border-[#d9e3f6] bg-white hover:border-[#a9bfe8]",
-            )}
-          >
-            <p className="text-sm font-semibold text-[#13233f]">운영비</p>
-            <p className="mt-1 text-xs text-[#61728f]">E. 변동비 + F~H 비용</p>
-          </button>
+        <div className="mt-4 rounded-[24px] border border-[#d9e3f6] bg-[#f8fbff] p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
+              현재 설정 저장 / 불러오기
+            </p>
+            <button
+              type="button"
+              onClick={onSaveScenario}
+              className="inline-flex items-center gap-2 rounded-full bg-[#1b4797] px-3 py-2 text-xs font-semibold text-white"
+            >
+              <Save className="h-3.5 w-3.5" />
+              저장
+            </button>
+          </div>
+
+          <div className="mt-3 flex gap-2">
+            <div className="flex-1 rounded-2xl border border-[#d9e3f6] bg-white px-3">
+              <select
+                value={selectedScenarioId}
+                onChange={(event) => onSelectScenario(event.target.value)}
+                className="h-10 w-full bg-transparent text-sm text-[#18376c] outline-none"
+              >
+                <option value="">저장된 설정 선택</option>
+                {savedScenarios.map((scenario) => (
+                  <option key={scenario.id} value={scenario.id}>
+                    {scenario.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={onLoadScenario}
+              disabled={!selectedScenarioId}
+              className="rounded-full bg-[#eef3ff] px-3 py-2 text-xs font-semibold text-[#1b4797] disabled:opacity-50"
+            >
+              불러오기
+            </button>
+            <button
+              type="button"
+              onClick={onDeleteScenario}
+              disabled={!selectedScenarioId}
+              className="inline-flex items-center gap-1 rounded-full bg-[#fff1f1] px-3 py-2 text-xs font-semibold text-[#a33f4c] disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              삭제
+            </button>
+          </div>
         </div>
       </div>
 
-      {settingsView === "basics" ? (
-        <SectionCard
-          categoryKey="sales"
-          category={storeCategory.sales}
-          onToggle={(next) =>
-            dispatch({
-              type: "updateCategory",
-              categoryKey: "sales",
-              patch: { enabled: next },
-            })
-          }
-          onCollapse={() =>
-            dispatch({
-              type: "updateCategory",
-              categoryKey: "sales",
-              patch: { collapsed: !storeCategory.sales.collapsed },
-            })
-          }
-        >
-          <FieldsGroup
-            fields={SALES_FIELDS}
-            values={store.sales}
-            update={(field, value) =>
-              dispatch({
-                type: "updateStoreField",
-                section: "sales",
-                field,
-                value,
-              })
-            }
-            showAdvanced
-          />
-        </SectionCard>
-      ) : null}
+      <div className="border-b border-[#e0e8f8] px-5 py-4">
+        <div className="flex flex-wrap gap-2">
+          <SegmentButton active={settingsView === "fixed"} onClick={() => setSettingsView("fixed")}>
+            기본 비용
+          </SegmentButton>
+          <SegmentButton active={settingsView === "variable"} onClick={() => setSettingsView("variable")}>
+            변동비
+          </SegmentButton>
+          <SegmentButton active={settingsView === "catalog"} onClick={() => setSettingsView("catalog")}>
+            원재료 / 포장재
+          </SegmentButton>
+          <SegmentButton active={settingsView === "loss"} onClick={() => setSettingsView("loss")}>
+            로스 / 폐기
+          </SegmentButton>
+          <SegmentButton active={settingsView === "pricing"} onClick={() => setSettingsView("pricing")}>
+            고급 가격 기준
+          </SegmentButton>
+        </div>
+      </div>
 
-      {settingsView === "menuCosts" ? (
-        <>
-          <SectionCard
-            categoryKey="menuSpec"
-            category={storeCategory.menuSpec}
-            onToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "menuSpec",
-                patch: { enabled: next },
-              })
-            }
-            onCollapse={() =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "menuSpec",
-                patch: { collapsed: !storeCategory.menuSpec.collapsed },
-              })
-            }
-            titleExtra={
-              <div className="rounded-2xl bg-[#f8fbff] px-3 py-3 text-sm text-[#586a8a]">
-                메뉴별 판매 비중과 HOT/ICE 가격은 위의 메뉴 카드에서 바로 조정할 수 있습니다.
-                기본 판매가는 원재료비율 30% 기준으로 시작합니다.
+      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+        {settingsView === "fixed" ? (
+          <>
+            <SectionCard
+              categoryKey="sales"
+              category={store.categories.sales}
+              onToggle={(next) =>
+                dispatch({ type: "updateCategory", categoryKey: "sales", patch: { enabled: next } })
+              }
+              onCollapse={() =>
+                dispatch({
+                  type: "updateCategory",
+                  categoryKey: "sales",
+                  patch: { collapsed: !store.categories.sales.collapsed },
+                })
+              }
+            >
+              <FieldsGroup
+                fields={SALES_FIELDS}
+                values={store.sales}
+                update={(field, value) =>
+                  dispatch({ type: "updateStoreField", section: "sales", field, value })
+                }
+                showAdvanced
+              />
+            </SectionCard>
+
+            <SectionCard
+              categoryKey="labor"
+              category={store.categories.labor}
+              onToggle={(next) =>
+                dispatch({ type: "updateCategory", categoryKey: "labor", patch: { enabled: next } })
+              }
+              onCollapse={() =>
+                dispatch({
+                  type: "updateCategory",
+                  categoryKey: "labor",
+                  patch: { collapsed: !store.categories.labor.collapsed },
+                })
+              }
+            >
+              <div className="mb-3 flex flex-wrap gap-2">
+                <SegmentButton
+                  active={store.categories.labor.useBundle}
+                  onClick={() =>
+                    dispatch({ type: "updateCategory", categoryKey: "labor", patch: { useBundle: true } })
+                  }
+                >
+                  묶음 입력
+                </SegmentButton>
+                <SegmentButton
+                  active={!store.categories.labor.useBundle}
+                  onClick={() =>
+                    dispatch({ type: "updateCategory", categoryKey: "labor", patch: { useBundle: false } })
+                  }
+                >
+                  상세 입력
+                </SegmentButton>
+                <SegmentButton active={showLaborAdvanced} onClick={() => setShowLaborAdvanced((current) => !current)}>
+                  고급 {showLaborAdvanced ? "숨기기" : "보기"}
+                </SegmentButton>
               </div>
-            }
-          >
-            <div className="rounded-2xl border border-dashed border-[#cfdcf5] px-3 py-3 text-sm text-[#5c6f90]">
-              메뉴 판매 비중 합계 {store.menus.reduce((sum, menu) => sum + menu.share, 0).toFixed(1)}%
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            categoryKey="ingredients"
-            category={storeCategory.ingredients}
-            onToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "ingredients",
-                patch: { enabled: next },
-              })
-            }
-            onCollapse={() =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "ingredients",
-                patch: { collapsed: !storeCategory.ingredients.collapsed },
-              })
-            }
-            titleExtra={
-              <button
-                type="button"
-                onClick={() =>
-                  dispatch({
-                    type: "updateCategory",
-                    categoryKey: "ingredients",
-                    patch: { showAdvanced: !storeCategory.ingredients.showAdvanced },
-                  })
+              <FieldsGroup
+                fields={LABOR_FIELDS}
+                values={store.labor}
+                update={(field, value) =>
+                  dispatch({ type: "updateStoreField", section: "labor", field, value })
                 }
-                className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-3 py-2 text-xs font-semibold text-[#1b4797]"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                고급 재료 {storeCategory.ingredients.showAdvanced ? "숨기기" : "보기"}
-              </button>
-            }
-          >
-            <PriceCatalogEditor
-              items={state.priceCatalog.ingredients}
-              showAdvanced={storeCategory.ingredients.showAdvanced}
-              onPriceChange={(itemId, value) =>
-                dispatch({
-                  type: "updateCatalogItem",
-                  catalog: "ingredients",
-                  itemId,
-                  patch: { pricePerUnit: value },
-                })
-              }
-              onToggle={(itemId, enabled) =>
-                dispatch({
-                  type: "updateCatalogItem",
-                  catalog: "ingredients",
-                  itemId,
-                  patch: { enabled },
-                })
-              }
-            />
-          </SectionCard>
+                showAdvanced={!store.categories.labor.useBundle && showLaborAdvanced}
+              />
+            </SectionCard>
 
-          <SectionCard
-            categoryKey="packaging"
-            category={storeCategory.packaging}
-            onToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "packaging",
-                patch: { enabled: next },
-              })
-            }
-            onCollapse={() =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "packaging",
-                patch: { collapsed: !storeCategory.packaging.collapsed },
-              })
-            }
-            titleExtra={
-              <button
-                type="button"
-                onClick={() =>
-                  dispatch({
-                    type: "updateCategory",
-                    categoryKey: "packaging",
-                    patch: { showAdvanced: !storeCategory.packaging.showAdvanced },
-                  })
+            <SectionCard
+              categoryKey="fixedCosts"
+              category={store.categories.fixedCosts}
+              onToggle={(next) =>
+                dispatch({ type: "updateCategory", categoryKey: "fixedCosts", patch: { enabled: next } })
+              }
+              onCollapse={() =>
+                dispatch({
+                  type: "updateCategory",
+                  categoryKey: "fixedCosts",
+                  patch: { collapsed: !store.categories.fixedCosts.collapsed },
+                })
+              }
+            >
+              <div className="mb-3 flex flex-wrap gap-2">
+                <SegmentButton
+                  active={store.categories.fixedCosts.useBundle}
+                  onClick={() =>
+                    dispatch({
+                      type: "updateCategory",
+                      categoryKey: "fixedCosts",
+                      patch: { useBundle: true },
+                    })
+                  }
+                >
+                  묶음 입력
+                </SegmentButton>
+                <SegmentButton
+                  active={!store.categories.fixedCosts.useBundle}
+                  onClick={() =>
+                    dispatch({
+                      type: "updateCategory",
+                      categoryKey: "fixedCosts",
+                      patch: { useBundle: false },
+                    })
+                  }
+                >
+                  상세 입력
+                </SegmentButton>
+                <SegmentButton active={showFixedAdvanced} onClick={() => setShowFixedAdvanced((current) => !current)}>
+                  고급 {showFixedAdvanced ? "숨기기" : "보기"}
+                </SegmentButton>
+              </div>
+              <FieldsGroup
+                fields={FIXED_COST_FIELDS}
+                values={store.fixedCosts}
+                update={(field, value) =>
+                  dispatch({ type: "updateStoreField", section: "fixedCosts", field, value })
                 }
-                className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-3 py-2 text-xs font-semibold text-[#1b4797]"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                고급 포장재 {storeCategory.packaging.showAdvanced ? "숨기기" : "보기"}
-              </button>
-            }
-          >
-            <PriceCatalogEditor
-              items={state.priceCatalog.packaging}
-              showAdvanced={storeCategory.packaging.showAdvanced}
-              onPriceChange={(itemId, value) =>
-                dispatch({
-                  type: "updateCatalogItem",
-                  catalog: "packaging",
-                  itemId,
-                  patch: { pricePerUnit: value },
-                })
-              }
-              onToggle={(itemId, enabled) =>
-                dispatch({
-                  type: "updateCatalogItem",
-                  catalog: "packaging",
-                  itemId,
-                  patch: { enabled },
-                })
-              }
-            />
-          </SectionCard>
-        </>
-      ) : null}
+                showAdvanced={!store.categories.fixedCosts.useBundle && showFixedAdvanced}
+              />
+            </SectionCard>
+          </>
+        ) : null}
 
-      {settingsView === "operations" ? (
-        <>
+        {settingsView === "variable" ? (
           <SectionCard
             categoryKey="variableCosts"
-            category={storeCategory.variableCosts}
+            category={store.categories.variableCosts}
             onToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "variableCosts",
-                patch: { enabled: next },
-              })
+              dispatch({ type: "updateCategory", categoryKey: "variableCosts", patch: { enabled: next } })
             }
             onCollapse={() =>
               dispatch({
                 type: "updateCategory",
                 categoryKey: "variableCosts",
-                patch: { collapsed: !storeCategory.variableCosts.collapsed },
+                patch: { collapsed: !store.categories.variableCosts.collapsed },
               })
             }
           >
@@ -581,159 +486,259 @@ export function InputTray({ state, store, dispatch, onClose }: InputTrayProps) {
               fields={VARIABLE_COST_FIELDS}
               values={store.variableCosts}
               update={(field, value) =>
-                dispatch({
-                  type: "updateStoreField",
-                  section: "variableCosts",
-                  field,
-                  value,
-                })
+                dispatch({ type: "updateStoreField", section: "variableCosts", field, value })
               }
               showAdvanced
             />
           </SectionCard>
+        ) : null}
 
-          <SectionCard
-            categoryKey="labor"
-            category={storeCategory.labor}
-            onToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "labor",
-                patch: { enabled: next },
-              })
-            }
-            onCollapse={() =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "labor",
-                patch: { collapsed: !storeCategory.labor.collapsed },
-              })
-            }
-            onBundleToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "labor",
-                patch: { useBundle: next },
-              })
-            }
-            onAdvancedToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "labor",
-                patch: { showAdvanced: next },
-              })
-            }
-          >
-            <FieldsGroup
-              fields={LABOR_FIELDS}
-              values={store.labor}
-              update={(field, value) =>
+        {settingsView === "catalog" ? (
+          <>
+            <SectionCard
+              categoryKey="ingredients"
+              category={store.categories.ingredients}
+              onToggle={(next) =>
+                dispatch({ type: "updateCategory", categoryKey: "ingredients", patch: { enabled: next } })
+              }
+              onCollapse={() =>
                 dispatch({
-                  type: "updateStoreField",
-                  section: "labor",
-                  field,
-                  value,
+                  type: "updateCategory",
+                  categoryKey: "ingredients",
+                  patch: { collapsed: !store.categories.ingredients.collapsed },
                 })
               }
-              showAdvanced={!storeCategory.labor.useBundle && storeCategory.labor.showAdvanced}
-            />
-          </SectionCard>
+            >
+              <div className="mb-3 flex gap-2">
+                <SegmentButton active={showCatalogAdvanced} onClick={() => setShowCatalogAdvanced((current) => !current)}>
+                  고급 재료 {showCatalogAdvanced ? "숨기기" : "보기"}
+                </SegmentButton>
+              </div>
+              <PriceCatalogEditor
+                items={state.priceCatalog.ingredients}
+                showAdvanced={showCatalogAdvanced}
+                onPriceChange={(itemId, value) =>
+                  dispatch({
+                    type: "updateCatalogItem",
+                    catalog: "ingredients",
+                    itemId,
+                    patch: { pricePerUnit: value },
+                  })
+                }
+                onToggle={(itemId, enabled) =>
+                  dispatch({
+                    type: "updateCatalogItem",
+                    catalog: "ingredients",
+                    itemId,
+                    patch: { enabled },
+                  })
+                }
+              />
+            </SectionCard>
 
-          <SectionCard
-            categoryKey="fixedCosts"
-            category={storeCategory.fixedCosts}
-            onToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "fixedCosts",
-                patch: { enabled: next },
-              })
-            }
-            onCollapse={() =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "fixedCosts",
-                patch: { collapsed: !storeCategory.fixedCosts.collapsed },
-              })
-            }
-            onBundleToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "fixedCosts",
-                patch: { useBundle: next },
-              })
-            }
-            onAdvancedToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "fixedCosts",
-                patch: { showAdvanced: next },
-              })
-            }
-          >
-            <FieldsGroup
-              fields={FIXED_COST_FIELDS}
-              values={store.fixedCosts}
-              update={(field, value) =>
+            <SectionCard
+              categoryKey="packaging"
+              category={store.categories.packaging}
+              onToggle={(next) =>
+                dispatch({ type: "updateCategory", categoryKey: "packaging", patch: { enabled: next } })
+              }
+              onCollapse={() =>
                 dispatch({
-                  type: "updateStoreField",
-                  section: "fixedCosts",
-                  field,
-                  value,
+                  type: "updateCategory",
+                  categoryKey: "packaging",
+                  patch: { collapsed: !store.categories.packaging.collapsed },
                 })
               }
-              showAdvanced={!storeCategory.fixedCosts.useBundle && storeCategory.fixedCosts.showAdvanced}
-            />
-          </SectionCard>
+            >
+              <PriceCatalogEditor
+                items={state.priceCatalog.packaging}
+                showAdvanced={showCatalogAdvanced}
+                onPriceChange={(itemId, value) =>
+                  dispatch({
+                    type: "updateCatalogItem",
+                    catalog: "packaging",
+                    itemId,
+                    patch: { pricePerUnit: value },
+                  })
+                }
+                onToggle={(itemId, enabled) =>
+                  dispatch({
+                    type: "updateCatalogItem",
+                    catalog: "packaging",
+                    itemId,
+                    patch: { enabled },
+                  })
+                }
+              />
+            </SectionCard>
+          </>
+        ) : null}
 
+        {settingsView === "loss" ? (
           <SectionCard
             categoryKey="loss"
-            category={storeCategory.loss}
+            category={store.categories.loss}
             onToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "loss",
-                patch: { enabled: next },
-              })
+              dispatch({ type: "updateCategory", categoryKey: "loss", patch: { enabled: next } })
             }
             onCollapse={() =>
               dispatch({
                 type: "updateCategory",
                 categoryKey: "loss",
-                patch: { collapsed: !storeCategory.loss.collapsed },
-              })
-            }
-            onBundleToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "loss",
-                patch: { useBundle: next },
-              })
-            }
-            onAdvancedToggle={(next) =>
-              dispatch({
-                type: "updateCategory",
-                categoryKey: "loss",
-                patch: { showAdvanced: next },
+                patch: { collapsed: !store.categories.loss.collapsed },
               })
             }
           >
+            <div className="mb-3 flex flex-wrap gap-2">
+              <SegmentButton
+                active={store.categories.loss.useBundle}
+                onClick={() =>
+                  dispatch({ type: "updateCategory", categoryKey: "loss", patch: { useBundle: true } })
+                }
+              >
+                로스율 일괄 반영
+              </SegmentButton>
+              <SegmentButton
+                active={!store.categories.loss.useBundle}
+                onClick={() =>
+                  dispatch({ type: "updateCategory", categoryKey: "loss", patch: { useBundle: false } })
+                }
+              >
+                항목별 조정
+              </SegmentButton>
+              <SegmentButton active={showLossAdvanced} onClick={() => setShowLossAdvanced((current) => !current)}>
+                고급 {showLossAdvanced ? "숨기기" : "보기"}
+              </SegmentButton>
+            </div>
             <FieldsGroup
               fields={LOSS_FIELDS}
               values={store.loss}
               update={(field, value) =>
-                dispatch({
-                  type: "updateStoreField",
-                  section: "loss",
-                  field,
-                  value,
-                })
+                dispatch({ type: "updateStoreField", section: "loss", field, value })
               }
-              showAdvanced={!storeCategory.loss.useBundle && storeCategory.loss.showAdvanced}
+              showAdvanced={!store.categories.loss.useBundle && showLossAdvanced}
             />
           </SectionCard>
-        </>
-      ) : null}
-    </section>
+        ) : null}
+
+        {settingsView === "pricing" ? (
+          <div className="space-y-4">
+            <section className="rounded-[26px] border border-[#d9e3f6] bg-white p-4">
+              <p className="text-sm font-semibold text-[#13233f]">고급 가격 기준</p>
+              <p className="mt-1 text-xs leading-5 text-[#61728f]">
+                기본은 앱 추천값을 쓰고, 필요할 때만 직접 수정합니다.
+              </p>
+
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-[22px] border border-[#d9e3f6] bg-[#f8fbff] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-[#13233f]">현재 적용 원재료율</p>
+                      <p className="mt-1 text-xs text-[#61728f]">
+                        결과 계산에 실제로 반영 중인 기준입니다.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-[#eef3ff] px-3 py-1.5 text-xs font-semibold text-[#1b4797]">
+                      {state.ingredientRateMode === "manual" ? "직접 수정" : "추천 사용"}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-2xl font-semibold text-[#13233f]">
+                    {formatPercent(result.appliedIngredientRate)}
+                  </p>
+                </div>
+
+                <div className="rounded-[22px] border border-[#d9e3f6] bg-[#f8fbff] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-[#13233f]">추천 원재료율</p>
+                      <p className="mt-1 text-xs text-[#61728f]">
+                        현재 구조와 전략 성향 기준으로 자동 추천한 값입니다.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-[#1b4797] px-3 py-1.5 text-xs font-semibold text-white">
+                      추천
+                    </span>
+                  </div>
+                  <p className="mt-3 text-2xl font-semibold text-[#13233f]">
+                    {formatPercent(result.recommendedIngredientRate)}
+                  </p>
+                  <p className="mt-2 text-xs text-[#61728f]">
+                    권장 범위 {formatPercent(result.recommendedIngredientRateRange.min)} ~{" "}
+                    {formatPercent(result.recommendedIngredientRateRange.max)}
+                  </p>
+                </div>
+
+                <div className="rounded-[22px] border border-[#d9e3f6] bg-white p-4">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: "setIngredientRateMode", value: "recommended" })}
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
+                        state.ingredientRateMode === "recommended"
+                          ? "bg-[#1b4797] text-white"
+                          : "bg-[#eef3ff] text-[#1b4797]",
+                      )}
+                    >
+                      <Lock className="h-4 w-4" />
+                      추천값 사용
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: "setIngredientRateMode", value: "manual" })}
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
+                        state.ingredientRateMode === "manual"
+                          ? "bg-[#1b4797] text-white"
+                          : "bg-[#eef3ff] text-[#1b4797]",
+                      )}
+                    >
+                      <Unlock className="h-4 w-4" />
+                      직접 수정
+                    </button>
+                  </div>
+
+                  <div className="mt-4">
+                    <FieldInput
+                      label="수동 원재료율"
+                      description="직접 수정 모드일 때만 적용됩니다."
+                      value={state.targetIngredientRate}
+                      kind="percent"
+                      onChange={(value) => dispatch({ type: "setTargetIngredientRate", value })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[26px] border border-[#d9e3f6] bg-white p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]">
+                <Sparkles className="h-4 w-4" />
+                자동 계산 참고값
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[20px] border border-[#e6ecf7] bg-[#f8fbff] p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#7081a2]">
+                    필요 방문객
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-[#13233f]">
+                    {result.requiredVisitorsPerDay}명/일
+                  </p>
+                </div>
+                <div className="rounded-[20px] border border-[#e6ecf7] bg-[#f8fbff] p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#7081a2]">
+                    평균 조정 필요액
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-[#13233f]">
+                    {result.averagePriceDeltaPerCup >= 0 ? "+" : ""}
+                    {Math.round(result.averagePriceDeltaPerCup)}원/잔
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }

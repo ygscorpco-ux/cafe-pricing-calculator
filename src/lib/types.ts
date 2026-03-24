@@ -1,6 +1,5 @@
 export type SalesBasis = "monthly" | "annual";
 export type VatMode = "inclusive" | "exclusive";
-export type AnalysisMode = "current" | "target";
 export type CategoryKey =
   | "sales"
   | "menuSpec"
@@ -14,6 +13,8 @@ export type CategoryKey =
 export type Temperature = "hot" | "ice";
 export type InputKind = "currency" | "percent" | "number";
 export type GoalStatus = "achievable" | "stretch" | "hard" | "surplus";
+export type PricingStrategy = "conservative" | "default" | "aggressive";
+export type IngredientRateMode = "recommended" | "manual";
 
 export interface CategoryState {
   enabled: boolean;
@@ -136,7 +137,8 @@ export interface StoreState {
 
 export interface AppState {
   wizard: WizardState;
-  analysisMode: AnalysisMode;
+  pricingStrategy: PricingStrategy;
+  ingredientRateMode: IngredientRateMode;
   targetMonthlyNetProfit: number;
   targetIngredientRate: number;
   priceCatalog: {
@@ -181,6 +183,8 @@ export interface IngredientBudgetItem {
   gap: number;
 }
 
+export type MenuStatus = "increase" | "stable" | "strong";
+
 export interface MenuResult {
   menuId: string;
   name: string;
@@ -193,6 +197,9 @@ export interface MenuResult {
   recommendedAveragePrice: number;
   recommendedPrices: Partial<Record<Temperature, number>>;
   priceGap: number;
+  priceGapLabel: string;
+  status: MenuStatus;
+  statusLabel: string;
   hotShare: number;
   directCost: number;
   packagingCost: number;
@@ -226,9 +233,17 @@ export interface StoreCalculationResult {
   monthlyLaborCost: number;
   monthlyFixedCost: number;
   requiredAverageTicket: number;
+  requiredVisitorsPerDay: number;
   menuResults: MenuResult[];
   topCostDrivers: CostDriver[];
   feasibility: FeasibilityResult;
+}
+
+export interface HeadlineSummary {
+  monthlyNetProfit: number;
+  targetGap: number;
+  averagePriceDeltaPerCup: number;
+  priorityMenuNames: string[];
 }
 
 export interface AppCalculationResult {
@@ -239,6 +254,16 @@ export interface AppCalculationResult {
     annualNetProfit: number;
     targetMonthlyGap: number;
   };
+  appliedIngredientRate: number;
+  recommendedIngredientRate: number;
+  recommendedIngredientRateRange: {
+    min: number;
+    max: number;
+  };
+  requiredVisitorsPerDay: number;
+  averagePriceDeltaPerCup: number;
+  priorityMenuNames: string[];
+  headlineSummary: HeadlineSummary;
   result: StoreCalculationResult;
   topCostDrivers: CostDriver[];
   feasibility: FeasibilityResult;

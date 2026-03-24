@@ -67,6 +67,8 @@ describe("calculateAppState", () => {
   it("기본 템플릿 메뉴는 목표 원재료비율 30%에 가깝게 시작한다", () => {
     const state = buildInitialState();
     state.targetMonthlyNetProfit = 0;
+    state.ingredientRateMode = "manual";
+    state.targetIngredientRate = 0.3;
 
     const result = calculateAppState(state);
     const americano = result.result.menuResults.find((menu) => menu.menuId === "americano");

@@ -25,15 +25,19 @@ export interface AiMenuSnapshot {
 export interface AiInsightRequest {
   salesBasis: AppState["wizard"]["salesBasis"];
   vatMode: AppState["wizard"]["vatMode"];
-  templateId: string;
+  pricingStrategy: AppState["pricingStrategy"];
   targetMonthlyNetProfit: number;
   targetIngredientRatePercent: number;
+  recommendedIngredientRatePercent: number;
   monthlySalesGross: number;
   monthlyNetProfit: number;
   annualNetProfit: number;
   requiredAverageTicket: number;
+  requiredVisitorsPerDay: number;
+  averagePriceDeltaPerCup: number;
   targetMonthlyGap: number;
   feasibilityLabel: string;
+  priorityMenuNames: string[];
   topCostDrivers: AiCostDriverSnapshot[];
   menus: AiMenuSnapshot[];
 }
@@ -53,15 +57,19 @@ export function buildAiInsightRequest(
   return {
     salesBasis: state.wizard.salesBasis,
     vatMode: state.wizard.vatMode,
-    templateId: state.wizard.templateId,
+    pricingStrategy: state.pricingStrategy,
     targetMonthlyNetProfit: state.targetMonthlyNetProfit,
-    targetIngredientRatePercent: state.targetIngredientRate * 100,
+    targetIngredientRatePercent: result.appliedIngredientRate * 100,
+    recommendedIngredientRatePercent: result.recommendedIngredientRate * 100,
     monthlySalesGross: result.totals.monthlySalesGross,
     monthlyNetProfit: result.totals.monthlyNetProfit,
     annualNetProfit: result.totals.annualNetProfit,
     requiredAverageTicket: result.result.requiredAverageTicket,
+    requiredVisitorsPerDay: result.requiredVisitorsPerDay,
+    averagePriceDeltaPerCup: result.averagePriceDeltaPerCup,
     targetMonthlyGap: result.totals.targetMonthlyGap,
     feasibilityLabel: result.feasibility.label,
+    priorityMenuNames: result.priorityMenuNames,
     topCostDrivers: result.topCostDrivers.slice(0, 4).map((driver) => ({
       label: driver.label,
       amount: driver.amount,

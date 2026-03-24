@@ -1,5 +1,5 @@
 import { buildInitialState, rebaseStateFromTemplate } from "@/lib/seeds";
-import type { AppState, CategoryKey, PriceCatalogItem, Temperature } from "@/lib/types";
+import type { AppState, CategoryKey, PriceCatalogItem, PricingStrategy, Temperature } from "@/lib/types";
 
 type StoreNumericSection =
   | "sales"
@@ -13,9 +13,11 @@ type MenuVariantField = "price" | "cupSizeMl" | "shotCount" | "enabled";
 export type AppAction =
   | { type: "hydrate"; state: AppState }
   | { type: "completeWizard" }
-  | { type: "setAnalysisMode"; mode: AppState["analysisMode"] }
+  | { type: "reopenWizard" }
   | { type: "setTargetMonthlyNetProfit"; value: number }
   | { type: "setTargetIngredientRate"; value: number }
+  | { type: "setIngredientRateMode"; value: AppState["ingredientRateMode"] }
+  | { type: "setPricingStrategy"; value: PricingStrategy }
   | { type: "setSalesBasis"; value: AppState["wizard"]["salesBasis"] }
   | { type: "setVatMode"; value: AppState["wizard"]["vatMode"] }
   | { type: "applyTemplate"; templateId: string }
@@ -80,15 +82,29 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           completed: true,
         },
       };
-    case "setAnalysisMode":
-      return { ...state, analysisMode: action.mode };
+    case "reopenWizard":
+      return {
+        ...state,
+        wizard: {
+          ...state.wizard,
+          completed: false,
+        },
+      };
     case "setTargetMonthlyNetProfit":
       return { ...state, targetMonthlyNetProfit: Math.max(0, action.value) };
     case "setTargetIngredientRate":
       return {
         ...state,
+        ingredientRateMode: "manual",
         targetIngredientRate: Math.min(Math.max(action.value, 0.05), 0.8),
       };
+    case "setIngredientRateMode":
+      return {
+        ...state,
+        ingredientRateMode: action.value,
+      };
+    case "setPricingStrategy":
+      return { ...state, pricingStrategy: action.value };
     case "setSalesBasis":
       return {
         ...state,
@@ -202,7 +218,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return buildInitialState({
         salesBasis: state.wizard.salesBasis,
         vatMode: state.wizard.vatMode,
-        templateId: state.wizard.templateId,
+        pricingStrategy: state.pricingStrategy,
       });
     default:
       return state;
