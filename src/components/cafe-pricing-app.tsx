@@ -18,11 +18,13 @@ import { OnboardingFlow } from "@/components/onboarding-flow";
 import { ResultsDashboard } from "@/components/results-dashboard";
 import { appReducer, createInitialAppState } from "@/lib/app-state";
 import { calculateAppState } from "@/lib/calculations";
-import { TEMPLATES } from "@/lib/constants";
+import { ONBOARDING_VERSION, TEMPLATES } from "@/lib/constants";
 import { formatCompactCurrency } from "@/lib/format";
 import {
+  loadOnboardingSeen,
   loadStoredScenarios,
   loadStoredState,
+  saveOnboardingSeen,
   saveStoredScenarios,
   saveStoredState,
 } from "@/lib/storage";
@@ -96,6 +98,11 @@ export function CafePricingApp() {
     () => true,
     () => false,
   );
+  const hasSeenOnboarding = useSyncExternalStore(
+    () => () => undefined,
+    () => loadOnboardingSeen(ONBOARDING_VERSION),
+    () => false,
+  );
 
   useEffect(() => {
     if (skipStatePersist.current) {
@@ -132,7 +139,9 @@ export function CafePricingApp() {
 
   const result = useMemo(() => calculateAppState(state), [state]);
   const activeTemplate = getTemplateById(state.wizard.templateId);
-  const showOnboarding = isClientReady && (!state.wizard.completed || isOnboardingReopened);
+  const showOnboarding =
+    isClientReady &&
+    (isOnboardingReopened || !state.wizard.completed || hasSeenOnboarding === false);
   const effectiveSelectedScenarioId = savedScenarios.some(
     (scenario) => scenario.id === selectedScenarioId,
   )
@@ -180,6 +189,11 @@ export function CafePricingApp() {
     setSavedScenarios((current) =>
       current.filter((scenario) => scenario.id !== selectedScenario.id),
     );
+  };
+
+  const handleCloseOnboarding = () => {
+    saveOnboardingSeen(ONBOARDING_VERSION);
+    setIsOnboardingReopened(false);
   };
 
   return (
@@ -480,7 +494,7 @@ export function CafePricingApp() {
         <OnboardingFlow
           wizard={state.wizard}
           dispatch={dispatch}
-          onClose={() => setIsOnboardingReopened(false)}
+          onClose={handleCloseOnboarding}
         />
       ) : null}
     </div>

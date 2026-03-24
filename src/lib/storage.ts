@@ -3,6 +3,7 @@ import type { AppState, SavedScenario } from "@/lib/types";
 
 const STATE_KEY = `cafe-pricing-calculator:${STORAGE_VERSION}:state`;
 const SCENARIOS_KEY = `cafe-pricing-calculator:${STORAGE_VERSION}:scenarios`;
+const ONBOARDING_KEY = "cafe-pricing-calculator:onboarding";
 
 interface WrappedState {
   version: string;
@@ -12,6 +13,11 @@ interface WrappedState {
 interface WrappedScenarios {
   version: string;
   scenarios: SavedScenario[];
+}
+
+interface WrappedOnboarding {
+  version: string;
+  seen: boolean;
 }
 
 export function loadStoredState() {
@@ -72,4 +78,35 @@ export function saveStoredScenarios(scenarios: SavedScenario[]) {
     scenarios,
   };
   window.localStorage.setItem(SCENARIOS_KEY, JSON.stringify(payload));
+}
+
+export function loadOnboardingSeen(version: string) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(ONBOARDING_KEY);
+    if (!raw) {
+      return false;
+    }
+
+    const parsed = JSON.parse(raw) as WrappedOnboarding;
+    return parsed.version === version && parsed.seen === true;
+  } catch {
+    return false;
+  }
+}
+
+export function saveOnboardingSeen(version: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const payload: WrappedOnboarding = {
+    version,
+    seen: true,
+  };
+
+  window.localStorage.setItem(ONBOARDING_KEY, JSON.stringify(payload));
 }

@@ -11,6 +11,7 @@ import type {
 
 export const VAT_RATE = 0.1;
 export const STORAGE_VERSION = "v2";
+export const ONBOARDING_VERSION = "product-onboarding-v1";
 export const DEFAULT_TARGET_MONTHLY_NET_PROFIT = 20_000_000;
 export const GOAL_THRESHOLDS = {
   achievable: 0.07,
