@@ -1,9 +1,10 @@
 import {
   CATEGORY_META,
+  DEFAULT_TARGET_INGREDIENT_RATE,
   DEFAULT_TARGET_MONTHLY_NET_PROFIT,
   TEMPLATES,
 } from "@/lib/constants";
-import { deepClone } from "@/lib/utils";
+import { deepClone, roundToUnit } from "@/lib/utils";
 import type {
   AppState,
   CategoryKey,
@@ -475,7 +476,14 @@ function createBaseStore(): StoreState {
   };
 }
 
-function applyPriceMultiplier(menus: MenuState[], multiplier: number) {
+function applyIngredientTargetPricing(
+  menus: MenuState[],
+  ingredients: PriceCatalogItem[],
+  targetIngredientRate: number,
+  multiplier = 1,
+) {
+  const ingredientMap = new Map(ingredients.map((item) => [item.id, item]));
+
   return menus.map((menu) => ({
     ...menu,
     variants: Object.fromEntries(
@@ -484,7 +492,15 @@ function applyPriceMultiplier(menus: MenuState[], multiplier: number) {
         variant
           ? {
               ...variant,
-              price: Math.round((variant.price * multiplier) / 10) * 10,
+              price: roundToUnit(
+                (variant.recipe.reduce((sum, ingredient) => {
+                  const item = ingredientMap.get(ingredient.itemId);
+                  return sum + ingredient.amount * (item?.pricePerUnit ?? 0);
+                }, 0) /
+                  Math.max(targetIngredientRate, 0.01)) *
+                  multiplier,
+                10,
+              ),
             }
           : variant,
       ]),
@@ -514,7 +530,6 @@ function applyTemplateToStore(store: StoreState, templateId: string) {
       next.fixedCosts.operationsBundle = 360_000;
       next.fixedCosts.suppliesBundle = 270_000;
       next.variableCosts.platformFeeRate = 0.013;
-      next.menus = applyPriceMultiplier(next.menus, 0.97);
       break;
     case "mid-range":
       next.sales.monthlySales = 45_000_000;
@@ -525,7 +540,6 @@ function applyTemplateToStore(store: StoreState, templateId: string) {
       next.fixedCosts.monthlyRent = 3_200_000;
       next.fixedCosts.marketingCost = 320_000;
       next.labor.salariedPayroll = 4_700_000;
-      next.menus = applyPriceMultiplier(next.menus, 1.08);
       break;
     case "premium":
       next.sales.monthlySales = 62_000_000;
@@ -538,7 +552,6 @@ function applyTemplateToStore(store: StoreState, templateId: string) {
       next.fixedCosts.operationsBundle = 640_000;
       next.labor.salariedPayroll = 5_500_000;
       next.labor.partTimeMonthlyPayroll = 4_100_000;
-      next.menus = applyPriceMultiplier(next.menus, 1.18);
       break;
     case "basic-cafe":
     default:
@@ -547,7 +560,6 @@ function applyTemplateToStore(store: StoreState, templateId: string) {
       next.sales.averageTicket = 5_400;
       next.sales.visitorsPerDay = 250;
       next.sales.takeoutRatio = 0.58;
-      next.menus = applyPriceMultiplier(next.menus, 1);
       break;
   }
 
@@ -560,6 +572,23 @@ export function buildInitialState(options?: {
   templateId?: string;
 }): AppState {
   const templateId = options?.templateId ?? TEMPLATES[0].id;
+  const ingredientMultiplier =
+    templateId === "premium" ? 1.12 : templateId === "mid-range" ? 1.05 : 1;
+  const ingredients = applyCatalogMultiplier(BASE_INGREDIENT_CATALOG, ingredientMultiplier);
+  const packaging = applyCatalogMultiplier(BASE_PACKAGING_CATALOG, 1);
+  const store = applyTemplateToStore(createBaseStore(), templateId);
+  store.menus = applyIngredientTargetPricing(
+    store.menus,
+    ingredients,
+    DEFAULT_TARGET_INGREDIENT_RATE,
+    templateId === "takeout"
+      ? 0.97
+      : templateId === "mid-range"
+        ? 1.08
+        : templateId === "premium"
+          ? 1.18
+          : 1,
+  );
 
   return {
     wizard: {
@@ -570,14 +599,12 @@ export function buildInitialState(options?: {
     },
     analysisMode: "current",
     targetMonthlyNetProfit: DEFAULT_TARGET_MONTHLY_NET_PROFIT,
+    targetIngredientRate: DEFAULT_TARGET_INGREDIENT_RATE,
     priceCatalog: {
-      ingredients: applyCatalogMultiplier(
-        BASE_INGREDIENT_CATALOG,
-        templateId === "premium" ? 1.12 : templateId === "mid-range" ? 1.05 : 1,
-      ),
-      packaging: applyCatalogMultiplier(BASE_PACKAGING_CATALOG, 1),
+      ingredients,
+      packaging,
     },
-    store: applyTemplateToStore(createBaseStore(), templateId),
+    store,
   };
 }
 
@@ -599,5 +626,6 @@ export function rebaseStateFromTemplate(
   next.wizard.completed = state.wizard.completed;
   next.analysisMode = state.analysisMode;
   next.targetMonthlyNetProfit = state.targetMonthlyNetProfit;
+  next.targetIngredientRate = state.targetIngredientRate;
   return next;
 }

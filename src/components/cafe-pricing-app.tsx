@@ -228,9 +228,9 @@ export function CafePricingApp() {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
                   사용 방식
                 </p>
-                <p className="mt-2 text-sm font-semibold">답 먼저, 설정 나중</p>
+                <p className="mt-2 text-sm font-semibold">30% 기준 + 답 먼저</p>
                 <p className="mt-1 text-xs leading-5 text-white/75">
-                  메뉴 권장가와 순이익을 먼저 보고, 필요한 비용만 펼쳐서 손보세요.
+                  원재료비율 30%와 순이익을 먼저 보고, 필요한 비용만 펼쳐서 손보세요.
                 </p>
               </div>
             </div>
@@ -460,7 +460,7 @@ export function CafePricingApp() {
             <Save className="h-3.5 w-3.5" />
             현재 상태 자동 저장 중
           </span>
-          <span>원재료 기본값은 시드 데이터 기준이며, 실제 매입가에 맞게 바로 수정할 수 있습니다.</span>
+          <span>기본 판매가는 원재료비율 30% 기준으로 시작하며, 단가와 가격은 바로 수정할 수 있습니다.</span>
           <span>AI 분석은 추후 서버 API만 연결하면 이 화면 위에 자연스럽게 얹을 수 있게 구조를 유지했습니다.</span>
         </footer>
       </div>

@@ -5,6 +5,7 @@ import type {
   AppState,
   CostDriver,
   FeasibilityResult,
+  IngredientBudgetItem,
   MenuResult,
   MenuState,
   StoreCalculationResult,
@@ -75,7 +76,7 @@ function normalizeShares(menus: MenuState[]) {
   const total = menus.reduce((sum, menu) => sum + menu.share, 0);
 
   if (total <= 0) {
-    return menus.map(() => 1 / menus.length);
+    return menus.map(() => 1 / Math.max(menus.length, 1));
   }
 
   return menus.map((menu) => menu.share / total);
@@ -84,7 +85,7 @@ function normalizeShares(menus: MenuState[]) {
 function calculateFeasibility(
   requiredMonthlyGap: number,
   currentPrices: number[],
-  recommendedPrices: number[],
+  goalRecommendedPrices: number[],
 ): FeasibilityResult {
   if (requiredMonthlyGap <= 0) {
     return {
@@ -98,8 +99,8 @@ function calculateFeasibility(
   const currentAverage =
     currentPrices.reduce((sum, price) => sum + price, 0) / Math.max(currentPrices.length, 1);
   const recommendedAverage =
-    recommendedPrices.reduce((sum, price) => sum + price, 0) /
-    Math.max(recommendedPrices.length, 1);
+    goalRecommendedPrices.reduce((sum, price) => sum + price, 0) /
+    Math.max(goalRecommendedPrices.length, 1);
   const increaseRate =
     currentAverage > 0 ? (recommendedAverage - currentAverage) / currentAverage : 0;
 
@@ -187,16 +188,58 @@ function calculateFixedCost(store: AppState["store"], costs: CostMap) {
     ["세무/법무/노무", store.fixedCosts.professionalServices],
     ["보험료", store.fixedCosts.insuranceFee],
     ["마케팅비", store.fixedCosts.marketingCost],
-    ["청소/방역/세탁/쓰레기 처리", store.fixedCosts.cleaningWasteLaundry],
+    ["청소/방역/세탁/폐기", store.fixedCosts.cleaningWasteLaundry],
     ["인터넷/전화/CCTV/음원", store.fixedCosts.telecomMusicCctv],
     ["POS/키오스크", store.fixedCosts.posKiosk],
     ["장비 감가상각/리스", store.fixedCosts.equipmentLeaseDepreciation],
-    ["정수필터/연수기/세정제", store.fixedCosts.waterFilterCleaning],
+    ["정수필터/세정 관리", store.fixedCosts.waterFilterCleaning],
     ["기타 소모품 묶음", store.fixedCosts.suppliesBundle],
   ] as const;
 
   detailed.forEach(([label, amount]) => addCost(costs, label, amount));
   return detailed.reduce((sum, [, amount]) => sum + amount, 0);
+}
+
+function getTemperatureWeight(menu: MenuResult, temperature: Temperature) {
+  if (menu.temperatureSupport === "both") {
+    return temperature === "hot" ? menu.hotShare : 1 - menu.hotShare;
+  }
+
+  if (menu.temperatureSupport === "hot") {
+    return temperature === "hot" ? 1 : 0;
+  }
+
+  return temperature === "ice" ? 1 : 0;
+}
+
+function mergeRecommendedPrices(
+  menu: MenuResult,
+  ingredientRecommendedPrices: Partial<Record<Temperature, number>>,
+  goalRecommendedPrices: Partial<Record<Temperature, number>>,
+) {
+  const temperatures = new Set<Temperature>([
+    ...Object.keys(menu.currentPrices),
+    ...Object.keys(ingredientRecommendedPrices),
+    ...Object.keys(goalRecommendedPrices),
+  ] as Temperature[]);
+
+  const recommendedPrices: Partial<Record<Temperature, number>> = {};
+
+  temperatures.forEach((temperature) => {
+    const ingredientPrice = ingredientRecommendedPrices[temperature] ?? 0;
+    const goalPrice = goalRecommendedPrices[temperature] ?? 0;
+    recommendedPrices[temperature] = roundToUnit(Math.max(ingredientPrice, goalPrice), 10);
+  });
+
+  const recommendedAveragePrice = [...temperatures].reduce((sum, temperature) => {
+    const weight = getTemperatureWeight(menu, temperature);
+    return sum + (recommendedPrices[temperature] ?? 0) * weight;
+  }, 0);
+
+  return {
+    recommendedPrices,
+    recommendedAveragePrice,
+  };
 }
 
 function calculateMenuResults(
@@ -239,7 +282,10 @@ function calculateMenuResults(
     let lossCost = 0;
     let contributionMargin = 0;
     let effectiveVariableRate = 0;
+    let ingredientRecommendedAveragePrice = 0;
     const currentPrices: Partial<Record<Temperature, number>> = {};
+    const ingredientRecommendedPrices: Partial<Record<Temperature, number>> = {};
+    const ingredientBudgetMap = new Map<string, number>();
 
     (Object.entries(menu.variants) as [Temperature, MenuState["variants"][Temperature]][]).forEach(
       ([temperature, variant]) => {
@@ -252,6 +298,7 @@ function calculateMenuResults(
         const supplyPrice = grossToSupply(grossPrice, state.wizard.vatMode);
         const variantRevenue = menuRevenueGross * temperatureShare;
         const variantUnits = grossPrice > 0 ? variantRevenue / grossPrice : 0;
+
         const recipeCost = store.categories.ingredients.enabled
           ? variant.recipe.reduce((sum, ingredient) => {
               const item = ingredientMap.get(ingredient.itemId);
@@ -260,10 +307,15 @@ function calculateMenuResults(
               }
 
               const itemCost = ingredient.amount * item.pricePerUnit;
+              ingredientBudgetMap.set(
+                ingredient.itemId,
+                (ingredientBudgetMap.get(ingredient.itemId) ?? 0) + itemCost * temperatureShare,
+              );
               addCost(costs, item.label, itemCost * variantUnits);
               return sum + itemCost;
             }, 0)
           : 0;
+
         const packagingBaseCost = store.categories.packaging.enabled
           ? variant.packaging.reduce((sum, item) => {
               const packagingItem = packagingMap.get(item.itemId);
@@ -280,6 +332,7 @@ function calculateMenuResults(
               return sum + itemCost;
             }, 0)
           : 0;
+
         const packagingUnitCost = packagingBaseCost * store.sales.takeoutRatio;
         const variableRate = store.categories.variableCosts.enabled
           ? store.sales.cardRatio *
@@ -301,6 +354,11 @@ function calculateMenuResults(
               (recipeCost + packagingUnitCost) * store.loss.remakeRate +
               (recipeCost + packagingUnitCost + variableUnitCost) * store.loss.freeDrinkRate;
 
+        const ingredientRecommendedPrice =
+          recipeCost > 0 && state.targetIngredientRate > 0
+            ? roundToUnit(recipeCost / state.targetIngredientRate, 10)
+            : grossPrice;
+
         const unitContribution =
           supplyPrice - recipeCost - packagingUnitCost - variableUnitCost - lossUnitCost;
 
@@ -313,7 +371,9 @@ function calculateMenuResults(
         lossCost += lossUnitCost * temperatureShare;
         contributionMargin += unitContribution * temperatureShare;
         effectiveVariableRate += variableRate * temperatureShare;
+        ingredientRecommendedAveragePrice += ingredientRecommendedPrice * temperatureShare;
         currentPrices[temperature] = grossPrice;
+        ingredientRecommendedPrices[temperature] = ingredientRecommendedPrice;
 
         if (store.categories.variableCosts.enabled) {
           addCost(
@@ -359,6 +419,23 @@ function calculateMenuResults(
       currentAverageSupplyPrice > 0
         ? (directCost + packagingCost + variableCost + lossCost) / currentAverageSupplyPrice
         : 0;
+    const directIngredientRate =
+      currentAveragePrice > 0 ? directCost / currentAveragePrice : 0;
+    const targetIngredientBudget = currentAveragePrice * state.targetIngredientRate;
+    const ingredientBudgetItems: IngredientBudgetItem[] =
+      directCost > 0
+        ? [...ingredientBudgetMap.entries()]
+            .map(([itemId, currentCost]) => {
+              const targetCost = targetIngredientBudget * (currentCost / directCost);
+              return {
+                itemId,
+                currentCost,
+                targetCost,
+                gap: currentCost - targetCost,
+              };
+            })
+            .sort((left, right) => right.currentCost - left.currentCost)
+        : [];
 
     monthlyContribution += monthlyMenuContribution;
     monthlyDirectCost += monthlyMenuDirectCost;
@@ -375,15 +452,23 @@ function calculateMenuResults(
       unitsSold,
       currentAveragePrice,
       currentPrices,
-      recommendedAveragePrice: currentAveragePrice,
-      recommendedPrices: currentPrices,
-      priceGap: 0,
+      recommendedAveragePrice: ingredientRecommendedAveragePrice,
+      recommendedPrices: ingredientRecommendedPrices,
+      priceGap: ingredientRecommendedAveragePrice - currentAveragePrice,
       hotShare: menu.hotShare,
       directCost,
       packagingCost,
       variableCost,
       lossCost,
+      directIngredientRate,
       costRate,
+      targetIngredientBudget,
+      ingredientBudgetGap: directCost - targetIngredientBudget,
+      ingredientBudgetItems,
+      ingredientRecommendedAveragePrice,
+      ingredientRecommendedPrices,
+      goalRecommendedAveragePrice: currentAveragePrice,
+      goalRecommendedPrices: currentPrices,
       contributionMargin,
       monthlyRevenue: menuRevenueGross,
       monthlyContribution: monthlyMenuContribution,
@@ -471,35 +556,43 @@ function applyTargetRecommendations(
     const retentionRate = Math.max(0.25, 1 - internal.effectiveVariableRate);
     const supplyDelta = deltaProfitPerUnit / retentionRate;
     const grossDelta = roundToUnit(supplyToGross(supplyDelta, vatMode), 10);
-    const recommendedAveragePrice = roundToUnit(
+    const goalRecommendedAveragePrice = roundToUnit(
       internal.result.currentAveragePrice + grossDelta,
       10,
     );
-    const recommendedPrices = Object.fromEntries(
+    const goalRecommendedPrices = Object.fromEntries(
       Object.entries(internal.result.currentPrices).map(([temperature, price]) => [
         temperature,
         roundToUnit(price + grossDelta, 10),
       ]),
-    ) as MenuResult["recommendedPrices"];
+    ) as MenuResult["goalRecommendedPrices"];
+
+    const mergedRecommendation = mergeRecommendedPrices(
+      internal.result,
+      internal.result.ingredientRecommendedPrices,
+      goalRecommendedPrices,
+    );
 
     return {
       ...internal.result,
-      recommendedAveragePrice,
-      recommendedPrices,
-      priceGap: recommendedAveragePrice - internal.result.currentAveragePrice,
+      goalRecommendedAveragePrice,
+      goalRecommendedPrices,
+      recommendedAveragePrice: mergedRecommendation.recommendedAveragePrice,
+      recommendedPrices: mergedRecommendation.recommendedPrices,
+      priceGap: mergedRecommendation.recommendedAveragePrice - internal.result.currentAveragePrice,
     };
   });
 
   const currentPrices = menuResults.map((menuResult) => menuResult.currentAveragePrice);
-  const recommendedPrices = menuResults.map(
-    (menuResult) => menuResult.recommendedAveragePrice,
+  const goalRecommendedPrices = menuResults.map(
+    (menuResult) => menuResult.goalRecommendedAveragePrice,
   );
 
   return {
     ...base.result,
     menuResults,
     requiredAverageTicket: Math.max(base.result.requiredAverageTicket, 0),
-    feasibility: calculateFeasibility(targetGap, currentPrices, recommendedPrices),
+    feasibility: calculateFeasibility(targetGap, currentPrices, goalRecommendedPrices),
   };
 }
 

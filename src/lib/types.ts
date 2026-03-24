@@ -138,6 +138,7 @@ export interface AppState {
   wizard: WizardState;
   analysisMode: AnalysisMode;
   targetMonthlyNetProfit: number;
+  targetIngredientRate: number;
   priceCatalog: {
     ingredients: PriceCatalogItem[];
     packaging: PriceCatalogItem[];
@@ -173,6 +174,13 @@ export interface FeasibilityResult {
   requiredMonthlyGap: number;
 }
 
+export interface IngredientBudgetItem {
+  itemId: string;
+  currentCost: number;
+  targetCost: number;
+  gap: number;
+}
+
 export interface MenuResult {
   menuId: string;
   name: string;
@@ -190,7 +198,15 @@ export interface MenuResult {
   packagingCost: number;
   variableCost: number;
   lossCost: number;
+  directIngredientRate: number;
   costRate: number;
+  targetIngredientBudget: number;
+  ingredientBudgetGap: number;
+  ingredientBudgetItems: IngredientBudgetItem[];
+  ingredientRecommendedAveragePrice: number;
+  ingredientRecommendedPrices: Partial<Record<Temperature, number>>;
+  goalRecommendedAveragePrice: number;
+  goalRecommendedPrices: Partial<Record<Temperature, number>>;
   contributionMargin: number;
   monthlyRevenue: number;
   monthlyContribution: number;

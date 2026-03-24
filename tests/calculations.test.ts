@@ -63,4 +63,20 @@ describe("calculateAppState", () => {
       exclusiveResult.result.monthlySalesGross,
     );
   });
+
+  it("기본 템플릿 메뉴는 목표 원재료비율 30%에 가깝게 시작한다", () => {
+    const state = buildInitialState();
+    state.targetMonthlyNetProfit = 0;
+
+    const result = calculateAppState(state);
+    const americano = result.result.menuResults.find((menu) => menu.menuId === "americano");
+
+    expect(americano).toBeDefined();
+    expect(americano?.directIngredientRate ?? 0).toBeGreaterThan(0.27);
+    expect(americano?.directIngredientRate ?? 0).toBeLessThan(0.33);
+    expect(americano?.ingredientRecommendedAveragePrice ?? 0).toBeCloseTo(
+      americano?.currentAveragePrice ?? 0,
+      -1,
+    );
+  });
 });

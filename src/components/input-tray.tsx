@@ -438,6 +438,7 @@ export function InputTray({ state, store, dispatch, onClose }: InputTrayProps) {
             titleExtra={
               <div className="rounded-2xl bg-[#f8fbff] px-3 py-3 text-sm text-[#586a8a]">
                 메뉴별 판매 비중과 HOT/ICE 가격은 위의 메뉴 카드에서 바로 조정할 수 있습니다.
+                기본 판매가는 원재료비율 30% 기준으로 시작합니다.
               </div>
             }
           >

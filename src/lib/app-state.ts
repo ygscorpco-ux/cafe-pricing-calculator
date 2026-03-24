@@ -15,6 +15,7 @@ export type AppAction =
   | { type: "completeWizard" }
   | { type: "setAnalysisMode"; mode: AppState["analysisMode"] }
   | { type: "setTargetMonthlyNetProfit"; value: number }
+  | { type: "setTargetIngredientRate"; value: number }
   | { type: "setSalesBasis"; value: AppState["wizard"]["salesBasis"] }
   | { type: "setVatMode"; value: AppState["wizard"]["vatMode"] }
   | { type: "applyTemplate"; templateId: string }
@@ -83,6 +84,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, analysisMode: action.mode };
     case "setTargetMonthlyNetProfit":
       return { ...state, targetMonthlyNetProfit: Math.max(0, action.value) };
+    case "setTargetIngredientRate":
+      return {
+        ...state,
+        targetIngredientRate: Math.min(Math.max(action.value, 0.05), 0.8),
+      };
     case "setSalesBasis":
       return {
         ...state,

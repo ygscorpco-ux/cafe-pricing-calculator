@@ -238,7 +238,7 @@ export function OnboardingFlow({
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-white/85">
                 <li>월 순이익, 연 순이익, 목표까지 차이</li>
-                <li>메뉴별 현재가와 권장가</li>
+                <li>메뉴별 현재가와 30% 기준 권장가</li>
                 <li>원가율이 높은 메뉴와 가장 큰 비용 요인</li>
               </ul>
             </div>
