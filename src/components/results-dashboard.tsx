@@ -83,11 +83,16 @@ function SummaryChip({
           : "border-[#d9e3f6] bg-white";
 
   return (
-    <div className={cn("rounded-full border px-3 py-2", toneClass)}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
+    <div
+      className={cn(
+        "rounded-[18px] border px-4 py-3 shadow-[0_8px_18px_rgba(27,71,151,0.04)]",
+        toneClass,
+      )}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6c7fa5]">
         {label}
       </p>
-      <p className="mt-1 text-sm font-semibold text-[#13233f]">{value}</p>
+      <p className="mt-2 text-base font-semibold leading-none text-[#13233f]">{value}</p>
     </div>
   );
 }
@@ -621,7 +626,7 @@ export function ResultsDashboard({
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
           <SummaryChip
             label="월 순이익"
             value={formatCompactCurrency(result.totals.monthlyNetProfit)}
