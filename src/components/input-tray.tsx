@@ -46,8 +46,8 @@ function SegmentButton({
       className={cn(
         "rounded-full px-3 py-2 text-xs font-semibold transition",
         active
-          ? "bg-[#16342e] text-white"
-          : "bg-[#eef4f2] text-[#4e6c66] hover:bg-[#e0ebe7]",
+          ? "bg-[#1b4797] text-white"
+          : "bg-[#eef3ff] text-[#1b4797] hover:bg-[#dde8ff]",
       )}
     >
       {children}
@@ -71,7 +71,7 @@ function ToggleSwitch({
       onClick={() => onChange(!checked)}
       className={cn(
         "relative h-7 w-12 rounded-full transition",
-        checked ? "bg-[#16342e]" : "bg-[#d1dad6]",
+        checked ? "bg-[#1b4797]" : "bg-[#d4dded]",
         disabled && "cursor-not-allowed opacity-60",
       )}
     >
@@ -111,12 +111,12 @@ function HelpTooltip({ content }: { content: string }) {
         onClick={() => setOpen((current) => !current)}
         aria-label="도움말 보기"
         aria-expanded={open}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#eaf1ef] text-[#55736d] transition hover:bg-[#dde9e5]"
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#eef3ff] text-[#1b4797] transition hover:bg-[#dde8ff]"
       >
         <CircleHelp className="h-3 w-3" />
       </button>
       {open ? (
-        <div className="absolute left-0 top-6 z-20 w-56 rounded-2xl border border-[#d7e0dc] bg-white p-3 text-[11px] leading-5 text-[#486660] shadow-[0_14px_30px_rgba(22,52,46,0.12)]">
+        <div className="absolute left-0 top-6 z-20 w-56 rounded-2xl border border-[#d9e3f6] bg-white p-3 text-[11px] leading-5 text-[#516281] shadow-[0_16px_30px_rgba(27,71,151,0.12)]">
           {content}
         </div>
       ) : null}
@@ -145,12 +145,12 @@ function FieldInput({
   return (
     <label className="block">
       {label ? (
-        <div className="mb-1.5 flex items-center gap-1 text-xs font-medium text-[#5d7a74]">
+        <div className="mb-1.5 flex items-center gap-1 text-xs font-medium text-[#5c6f90]">
           <span>{label}</span>
           {description ? <HelpTooltip content={description} /> : null}
         </div>
       ) : null}
-      <div className="flex items-center rounded-2xl border border-[#d5ddda] bg-white px-3">
+      <div className="flex items-center rounded-2xl border border-[#d9e3f6] bg-white px-3">
         <input
           type="number"
           value={Number.isFinite(displayValue) ? displayValue : 0}
@@ -158,9 +158,9 @@ function FieldInput({
             const numeric = Number(event.target.value);
             onChange(kind === "percent" ? ratioFromPercentInput(numeric) : numeric);
           }}
-          className="h-10 w-full bg-transparent text-sm text-[#183a33] outline-none"
+          className="h-10 w-full bg-transparent text-sm text-[#13233f] outline-none"
         />
-        <span className="text-xs text-[#6b8781]">{suffix}</span>
+        <span className="text-xs text-[#7183a3]">{suffix}</span>
       </div>
     </label>
   );
@@ -188,18 +188,18 @@ function SectionCard({
   const meta = CATEGORY_META[categoryKey];
 
   return (
-    <section className="rounded-[28px] border border-[#d5ddda] bg-white/95 p-4 shadow-[0_12px_36px_rgba(22,52,46,0.06)]">
+    <section className="rounded-[28px] border border-[#d9e3f6] bg-white p-4 shadow-[0_14px_34px_rgba(27,71,151,0.06)]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#16342e]">{meta.label}</p>
-          <p className="mt-1 text-xs leading-5 text-[#607d76]">{meta.description}</p>
+          <p className="text-sm font-semibold text-[#13233f]">{meta.label}</p>
+          <p className="mt-1 text-xs leading-5 text-[#61728f]">{meta.description}</p>
         </div>
         <div className="flex items-center gap-2">
           <ToggleSwitch checked={category.enabled} disabled={meta.locked} onChange={onToggle} />
           <button
             type="button"
             onClick={onCollapse}
-            className="rounded-full bg-[#eff5f2] p-2 text-[#56746e]"
+            className="rounded-full bg-[#eef3ff] p-2 text-[#1b4797]"
           >
             {category.collapsed ? (
               <ChevronDown className="h-4 w-4" />
@@ -255,7 +255,7 @@ function PriceCatalogEditor({
         .map((item) => (
           <div
             key={item.id}
-            className="grid grid-cols-[1fr_120px] items-center gap-3 rounded-2xl border border-[#dce4e0] bg-[#f8fbfa] px-3 py-2"
+            className="grid grid-cols-[1fr_120px] items-center gap-3 rounded-2xl border border-[#e0e8f8] bg-[#f8fbff] px-3 py-2"
           >
             <div className="flex items-center gap-2">
               <input
@@ -264,8 +264,8 @@ function PriceCatalogEditor({
                 onChange={(event) => onToggle(item.id, event.target.checked)}
               />
               <div>
-                <p className="text-sm font-medium text-[#1d3d36]">{item.label}</p>
-                <p className="text-[11px] text-[#6b8781]">{item.unit} 기준 단가</p>
+                <p className="text-sm font-medium text-[#13233f]">{item.label}</p>
+                <p className="text-[11px] text-[#7183a3]">{item.unit} 기준 단가</p>
               </div>
             </div>
             <FieldInput
@@ -316,26 +316,25 @@ export function InputTray({ state, store, dispatch, onClose }: InputTrayProps) {
 
   return (
     <section className="space-y-4">
-      <div className="rounded-[30px] border border-[#d5ddda] bg-white/95 p-5 shadow-[0_18px_60px_rgba(22,52,46,0.08)]">
+      <div className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_44px_rgba(27,71,151,0.08)]">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#5f7f78]">
-              Input Tray
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6c7fa5]">
+              Detail Settings
             </p>
-            <h2 className="mt-2 text-lg font-semibold text-[#16342e]">
-              필요할 때만 여는 입력 패널
-            </h2>
-            <p className="mt-1 text-sm text-[#607d76]">
-              가격을 보면서 필요한 항목만 꺼내 수정할 수 있게 입력을 3묶음으로 압축했습니다.
+            <h2 className="mt-2 text-lg font-semibold text-[#13233f]">필요할 때만 여는 상세 설정</h2>
+            <p className="mt-1 text-sm text-[#61728f]">
+              초보자는 핵심값만 보고, 세부 단가나 운영비는 필요한 순간에만 펼쳐서 수정할 수
+              있게 3묶음으로 정리했습니다.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="hidden xl:inline-flex items-center gap-2 rounded-full bg-[#eef4f2] px-3 py-2 text-xs font-semibold text-[#4f6b66]"
+            className="hidden xl:inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-3 py-2 text-xs font-semibold text-[#1b4797]"
           >
             <PanelLeftClose className="h-3.5 w-3.5" />
-            입력 접기
+            상세 설정 닫기
           </button>
         </div>
 
@@ -346,12 +345,12 @@ export function InputTray({ state, store, dispatch, onClose }: InputTrayProps) {
             className={cn(
               "rounded-2xl border px-3 py-3 text-left transition",
               settingsView === "basics"
-                ? "border-[#173a33] bg-[#f4faf7]"
-                : "border-[#d6dfdb] bg-[#fbfdfc] hover:border-[#b8c7c2]",
+                ? "border-[#1b4797] bg-[#f4f8ff]"
+                : "border-[#d9e3f6] bg-white hover:border-[#a9bfe8]",
             )}
           >
-            <p className="text-sm font-semibold text-[#173a33]">기본 입력</p>
-            <p className="mt-1 text-xs text-[#64807a]">A. 매출 기준</p>
+            <p className="text-sm font-semibold text-[#13233f]">기본 입력</p>
+            <p className="mt-1 text-xs text-[#61728f]">A. 매출 기준</p>
           </button>
           <button
             type="button"
@@ -359,12 +358,12 @@ export function InputTray({ state, store, dispatch, onClose }: InputTrayProps) {
             className={cn(
               "rounded-2xl border px-3 py-3 text-left transition",
               settingsView === "menuCosts"
-                ? "border-[#173a33] bg-[#f4faf7]"
-                : "border-[#d6dfdb] bg-[#fbfdfc] hover:border-[#b8c7c2]",
+                ? "border-[#1b4797] bg-[#f4f8ff]"
+                : "border-[#d9e3f6] bg-white hover:border-[#a9bfe8]",
             )}
           >
-            <p className="text-sm font-semibold text-[#173a33]">메뉴 · 원가</p>
-            <p className="mt-1 text-xs text-[#64807a]">B 메뉴 스펙 + C~D 단가</p>
+            <p className="text-sm font-semibold text-[#13233f]">메뉴·원가</p>
+            <p className="mt-1 text-xs text-[#61728f]">B. 메뉴 스펙 + C~D 단가</p>
           </button>
           <button
             type="button"
@@ -372,12 +371,12 @@ export function InputTray({ state, store, dispatch, onClose }: InputTrayProps) {
             className={cn(
               "rounded-2xl border px-3 py-3 text-left transition",
               settingsView === "operations"
-                ? "border-[#173a33] bg-[#f4faf7]"
-                : "border-[#d6dfdb] bg-[#fbfdfc] hover:border-[#b8c7c2]",
+                ? "border-[#1b4797] bg-[#f4f8ff]"
+                : "border-[#d9e3f6] bg-white hover:border-[#a9bfe8]",
             )}
           >
-            <p className="text-sm font-semibold text-[#173a33]">운영비</p>
-            <p className="mt-1 text-xs text-[#64807a]">E 변동비 + F~H 비용</p>
+            <p className="text-sm font-semibold text-[#13233f]">운영비</p>
+            <p className="mt-1 text-xs text-[#61728f]">E. 변동비 + F~H 비용</p>
           </button>
         </div>
       </div>
@@ -437,13 +436,13 @@ export function InputTray({ state, store, dispatch, onClose }: InputTrayProps) {
               })
             }
             titleExtra={
-              <div className="rounded-2xl bg-[#f6faf8] px-3 py-3 text-sm text-[#56726c]">
-                메뉴별 컵 용량, 샷 수, 재료량과 HOT/ICE 가격은 바로 아래 메인 작업면에서 수정합니다.
+              <div className="rounded-2xl bg-[#f8fbff] px-3 py-3 text-sm text-[#586a8a]">
+                메뉴별 판매 비중과 HOT/ICE 가격은 위의 메뉴 카드에서 바로 조정할 수 있습니다.
               </div>
             }
           >
-            <div className="rounded-2xl border border-dashed border-[#cad5d1] px-3 py-3 text-sm text-[#607d76]">
-              판매 비중 합계 {store.menus.reduce((sum, menu) => sum + menu.share, 0).toFixed(1)}%
+            <div className="rounded-2xl border border-dashed border-[#cfdcf5] px-3 py-3 text-sm text-[#5c6f90]">
+              메뉴 판매 비중 합계 {store.menus.reduce((sum, menu) => sum + menu.share, 0).toFixed(1)}%
             </div>
           </SectionCard>
 
@@ -474,7 +473,7 @@ export function InputTray({ state, store, dispatch, onClose }: InputTrayProps) {
                     patch: { showAdvanced: !storeCategory.ingredients.showAdvanced },
                   })
                 }
-                className="inline-flex items-center gap-2 rounded-full bg-[#eef4f2] px-3 py-2 text-xs font-semibold text-[#4f6b66]"
+                className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-3 py-2 text-xs font-semibold text-[#1b4797]"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 고급 재료 {storeCategory.ingredients.showAdvanced ? "숨기기" : "보기"}
@@ -530,7 +529,7 @@ export function InputTray({ state, store, dispatch, onClose }: InputTrayProps) {
                     patch: { showAdvanced: !storeCategory.packaging.showAdvanced },
                   })
                 }
-                className="inline-flex items-center gap-2 rounded-full bg-[#eef4f2] px-3 py-2 text-xs font-semibold text-[#4f6b66]"
+                className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-3 py-2 text-xs font-semibold text-[#1b4797]"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 고급 포장재 {storeCategory.packaging.showAdvanced ? "숨기기" : "보기"}

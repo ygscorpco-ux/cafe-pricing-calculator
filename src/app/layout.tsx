@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR, Space_Grotesk } from "next/font/google";
+
 import "./globals.css";
 
 const notoSansKr = Noto_Sans_KR({
@@ -13,9 +14,9 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Cafe Pricing Calculator",
+  title: "아따 얼만교?",
   description:
-    "카페 메뉴 가격, 원가, 순이익, 목표 이익 기준 권장가를 빠르게 계산하는 웹앱",
+    "카페 메뉴 가격, 원가, 목표 순이익 기준 권장 판매가를 빠르게 계산하는 카페 가격 설계 도구",
 };
 
 export default function RootLayout({

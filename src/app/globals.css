@@ -1,8 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f9fd;
+  --foreground: #13233f;
+  --brand: #1b4797;
+  --brand-soft: #edf3ff;
+  --brand-border: #d8e4fb;
+  --surface: #ffffff;
+  --muted: #61728f;
 }
 
 @theme inline {
@@ -21,7 +26,10 @@ html {
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top left, rgba(27, 71, 151, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgba(27, 71, 151, 0.08), transparent 24%),
+    linear-gradient(180deg, #fcfdff 0%, #f5f8fe 46%, #f7f9fd 100%);
   color: var(--foreground);
   font-family: var(--font-noto-sans-kr), sans-serif;
 }
@@ -44,7 +52,7 @@ input[type="number"] {
 }
 
 ::selection {
-  background: rgba(22, 52, 46, 0.12);
+  background: rgba(27, 71, 151, 0.16);
 }
 
 table {
