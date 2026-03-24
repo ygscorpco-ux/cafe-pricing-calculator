@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import {
   FolderOpen,
   LayoutPanelLeft,
@@ -91,6 +91,11 @@ export function CafePricingApp() {
   const inlineInputTrayRef = useRef<HTMLDivElement | null>(null);
   const skipStatePersist = useRef(true);
   const skipScenarioPersist = useRef(true);
+  const isClientReady = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
 
   useEffect(() => {
     if (skipStatePersist.current) {
@@ -127,7 +132,7 @@ export function CafePricingApp() {
 
   const result = useMemo(() => calculateAppState(state), [state]);
   const activeTemplate = getTemplateById(state.wizard.templateId);
-  const showOnboarding = !state.wizard.completed || isOnboardingReopened;
+  const showOnboarding = isClientReady && (!state.wizard.completed || isOnboardingReopened);
   const effectiveSelectedScenarioId = savedScenarios.some(
     (scenario) => scenario.id === selectedScenarioId,
   )
