@@ -68,8 +68,7 @@ export function CafePricingApp() {
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("results");
   const [isInputTrayOpen, setIsInputTrayOpen] = useState(false);
   const [hasBooted, setHasBooted] = useState(false);
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
-  const [forceOnboardingOpen, setForceOnboardingOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const inlineInputTrayRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -81,6 +80,7 @@ export function CafePricingApp() {
       }
 
       setSavedScenarios(storedScenarios);
+      setIsOnboardingOpen(true);
       setHasBooted(true);
     });
 
@@ -127,9 +127,6 @@ export function CafePricingApp() {
   const selectedScenario = savedScenarios.find(
     (scenario) => scenario.id === effectiveSelectedScenarioId,
   );
-  const shouldShowOnboarding =
-    hasBooted &&
-    (forceOnboardingOpen || (!onboardingDismissed && !state.wizard.completed));
 
   if (!hasBooted) {
     return (
@@ -260,8 +257,7 @@ export function CafePricingApp() {
               <button
                 type="button"
                 onClick={() => {
-                  setOnboardingDismissed(false);
-                  setForceOnboardingOpen(true);
+                  setIsOnboardingOpen(true);
                 }}
                 className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]"
               >
@@ -280,8 +276,7 @@ export function CafePricingApp() {
                 type="button"
                 onClick={() => {
                   dispatch({ type: "resetState" });
-                  setOnboardingDismissed(false);
-                  setForceOnboardingOpen(true);
+                  setIsOnboardingOpen(true);
                 }}
                 className="inline-flex items-center gap-2 rounded-full bg-[#f3f6fb] px-4 py-2.5 text-sm font-semibold text-[#4f6285]"
               >
@@ -415,14 +410,11 @@ export function CafePricingApp() {
 
       </div>
 
-      {shouldShowOnboarding ? (
+      {hasBooted && isOnboardingOpen ? (
         <OnboardingFlow
           state={state}
           dispatch={dispatch}
-          onClose={() => {
-            setOnboardingDismissed(true);
-            setForceOnboardingOpen(false);
-          }}
+          onClose={() => setIsOnboardingOpen(false)}
         />
       ) : null}
     </div>
