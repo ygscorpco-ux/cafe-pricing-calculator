@@ -15,7 +15,15 @@ import { NumericInput } from "@/components/numeric-input";
 import { buildAiInsightRequest, type AiInsightResponse } from "@/lib/ai-insights";
 import type { AppAction } from "@/lib/app-state";
 import { formatCompactCurrency, formatCurrency, formatPercent } from "@/lib/format";
-import type { AppCalculationResult, AppState, MenuResult, MenuState, Temperature } from "@/lib/types";
+import type {
+  AppCalculationResult,
+  AppState,
+  MenuResult,
+  MenuState,
+  MenuVariantState,
+  PriceCatalogItem,
+  Temperature,
+} from "@/lib/types";
 import { cn, percentFromRatio, ratioFromPercentInput } from "@/lib/utils";
 
 interface ResultsDashboardProps {
@@ -27,6 +35,12 @@ interface ResultsDashboardProps {
   onToggleInputTray: () => void;
   inlineInputTray?: React.ReactNode;
 }
+
+const FLOATING_ACTION_CLASS =
+  "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(27,71,151,0.14)] active:translate-y-0 active:scale-[0.99]";
+
+const INTERACTIVE_CARD_CLASS =
+  "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_16px_32px_rgba(27,71,151,0.12)] active:translate-y-0 active:scale-[0.995]";
 
 function NumberInput({ value, onChange, suffix, className }: { value: number; onChange: (value: number) => void; suffix?: string; className?: string; }) {
   return <NumericInput value={value} onChange={onChange} suffix={suffix} className={className} />;
@@ -66,12 +80,57 @@ function MetricBar({ label, amount, total, tone }: { label: string; amount: numb
   );
 }
 
-function MenuMetric({ label, value, tone = "blue" }: { label: string; value: string; tone?: "blue" | "amber" | "rose" | "emerald"; }) {
-  const toneClass = tone === "amber" ? "bg-[#fff7e5]" : tone === "rose" ? "bg-[#fff5f6]" : tone === "emerald" ? "bg-[#f5fbf8]" : "bg-[#f8fbff]";
+function StripMetric({
+  label,
+  value,
+  emphasize = false,
+}: {
+  label: string;
+  value: string;
+  emphasize?: boolean;
+}) {
   return (
-    <div className={cn("rounded-2xl p-3", toneClass)}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#7081a2]">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-[#13233f]">{value}</p>
+    <div
+      className={cn(
+        "rounded-[20px] border px-4 py-3",
+        emphasize
+          ? "border-[#c9d8f7] bg-[#f3f7ff]"
+          : "border-[#e6ecf7] bg-white",
+      )}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7a8bac]">
+        {label}
+      </p>
+      <p className="mt-2 text-lg font-semibold tracking-tight text-[#13233f]">{value}</p>
+    </div>
+  );
+}
+
+function DetailMetricCard({
+  label,
+  value,
+  hint,
+  accent = "neutral",
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  accent?: "neutral" | "blue";
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-[22px] border px-4 py-4",
+        accent === "blue"
+          ? "border-[#d5e1f8] bg-[#f5f8ff]"
+          : "border-[#e6ecf7] bg-white",
+      )}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#7081a2]">
+        {label}
+      </p>
+      <p className="mt-2 text-xl font-semibold tracking-tight text-[#13233f]">{value}</p>
+      {hint ? <p className="mt-1 text-xs leading-5 text-[#6d7d99]">{hint}</p> : null}
     </div>
   );
 }
@@ -92,6 +151,140 @@ function EditablePriceGroup({ menu, currentPrices, onChange }: { menu: MenuState
 
   const temperature = menu.temperatureSupport === "hot" ? "hot" : "ice";
   return <NumberInput value={currentPrices[temperature] ?? 0} onChange={(value) => onChange(temperature, value)} suffix="원" className="h-10" />;
+}
+
+function InlineSpecField({
+  label,
+  value,
+  suffix,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  suffix: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block">
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#7081a2]">
+        {label}
+      </p>
+      <NumberInput value={value} onChange={onChange} suffix={suffix} className="h-10" />
+    </label>
+  );
+}
+
+function UsageEditor({
+  title,
+  items,
+  catalog,
+  unitKey,
+  onChange,
+}: {
+  title: string;
+  items: Array<{ itemId: string; amount?: number; quantity?: number }>;
+  catalog: Record<string, PriceCatalogItem>;
+  unitKey: "amount" | "quantity";
+  onChange: (itemId: string, value: number) => void;
+}) {
+  return (
+    <div className="rounded-[22px] border border-[#e0e8f8] bg-white p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6c7fa5]">{title}</p>
+      <div className="mt-3 space-y-2">
+        {items.map((item) => {
+          const catalogItem = catalog[item.itemId];
+          const value = unitKey === "amount" ? item.amount ?? 0 : item.quantity ?? 0;
+          return (
+            <div
+              key={item.itemId}
+              className="grid grid-cols-[minmax(0,1fr)_120px] items-center gap-3 rounded-2xl border border-[#edf2fb] bg-[#f8fbff] px-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[#13233f]">
+                  {catalogItem?.label ?? item.itemId}
+                </p>
+                <p className="text-[11px] text-[#7183a3]">
+                  {catalogItem?.unit ?? (unitKey === "amount" ? "단위" : "개")}
+                </p>
+              </div>
+              <NumberInput
+                value={value}
+                onChange={(nextValue) => onChange(item.itemId, nextValue)}
+                suffix={catalogItem?.unit ?? (unitKey === "amount" ? "" : "개")}
+                className="h-10"
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function VariantSpecEditor({
+  temperature,
+  variant,
+  ingredientCatalog,
+  packagingCatalog,
+  onVariantFieldChange,
+  onUsageChange,
+}: {
+  temperature: Temperature;
+  variant: MenuVariantState;
+  ingredientCatalog: Record<string, PriceCatalogItem>;
+  packagingCatalog: Record<string, PriceCatalogItem>;
+  onVariantFieldChange: (
+    field: "cupSizeMl" | "shotCount",
+    value: number,
+  ) => void;
+  onUsageChange: (
+    usageKind: "recipe" | "packaging",
+    itemId: string,
+    value: number,
+  ) => void;
+}) {
+  return (
+    <div className="rounded-[24px] border border-[#d9e3f6] bg-[#f8fbff] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-[#13233f]">{temperature.toUpperCase()} 메뉴 스펙</p>
+        <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-[11px] font-semibold text-[#1b4797]">
+          {variant.enabled ? "사용 중" : "OFF"}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <InlineSpecField
+          label="컵 용량"
+          value={variant.cupSizeMl}
+          suffix="ml"
+          onChange={(value) => onVariantFieldChange("cupSizeMl", value)}
+        />
+        <InlineSpecField
+          label="샷 수"
+          value={variant.shotCount}
+          suffix="샷"
+          onChange={(value) => onVariantFieldChange("shotCount", value)}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-3 xl:grid-cols-2">
+        <UsageEditor
+          title="원재료 구성"
+          items={variant.recipe}
+          catalog={ingredientCatalog}
+          unitKey="amount"
+          onChange={(itemId, value) => onUsageChange("recipe", itemId, value)}
+        />
+        <UsageEditor
+          title="포장재 구성"
+          items={variant.packaging}
+          catalog={packagingCatalog}
+          unitKey="quantity"
+          onChange={(itemId, value) => onUsageChange("packaging", itemId, value)}
+        />
+      </div>
+    </div>
+  );
 }
 
 function RecommendedPriceList({ prices }: { prices: Partial<Record<Temperature, number>> }) {
@@ -122,7 +315,7 @@ function buildInsights({ result, highestRawRateMenu, largestIngredientGapMenu, s
 
 export function ResultsDashboard({ state, result, dispatch, isInputTrayOpen, onOpenInputTray, onToggleInputTray, inlineInputTray }: ResultsDashboardProps) {
   const [selectedMenuId, setSelectedMenuId] = useState<string | null>(null);
-  const [showSelectedSettings, setShowSelectedSettings] = useState(false);
+  const [showSelectedSettings, setShowSelectedSettings] = useState(true);
   const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [aiInsights, setAiInsights] = useState<string[]>([]);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
@@ -130,6 +323,16 @@ export function ResultsDashboard({ state, result, dispatch, isInputTrayOpen, onO
   const [lastAiRequestKey, setLastAiRequestKey] = useState<string | null>(null);
   const store = state.store;
   const calculation = result.result;
+  const ingredientCatalog = useMemo(
+    () =>
+      Object.fromEntries(state.priceCatalog.ingredients.map((item) => [item.id, item])),
+    [state.priceCatalog.ingredients],
+  );
+  const packagingCatalog = useMemo(
+    () =>
+      Object.fromEntries(state.priceCatalog.packaging.map((item) => [item.id, item])),
+    [state.priceCatalog.packaging],
+  );
   const averageIngredientRate = calculation.monthlySalesGross > 0 ? calculation.monthlyDirectCost / calculation.monthlySalesGross : 0;
   const averageEffectiveCostRate = calculation.monthlySalesSupply > 0 ? (calculation.monthlyDirectCost + calculation.monthlyPackagingCost + calculation.monthlyVariableCost + calculation.monthlyLossCost) / calculation.monthlySalesSupply : 0;
   const costBase = calculation.monthlyDirectCost + calculation.monthlyPackagingCost + calculation.monthlyVariableCost + calculation.monthlyLossCost + calculation.monthlyLaborCost + calculation.monthlyFixedCost;
@@ -223,14 +426,37 @@ export function ResultsDashboard({ state, result, dispatch, isInputTrayOpen, onO
             <h3 className="mt-2 text-xl font-semibold text-[#13233f]">먼저 손볼 메뉴</h3>
             <p className="mt-2 text-sm leading-6 text-[#61728f]">모든 메뉴를 한 번에 보지 말고, 우선순위 높은 메뉴부터 확인하세요.</p>
           </div>
-          <button type="button" onClick={onToggleInputTray} className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]">
+          <button
+            type="button"
+            onClick={onToggleInputTray}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]",
+              FLOATING_ACTION_CLASS,
+            )}
+          >
             <Sparkles className="h-4 w-4" />
             {isInputTrayOpen ? "상세 설정 닫기" : "상세 설정 열기"}
           </button>
         </div>
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           {priorityCards.map((card) => (
-            <button key={card.key} type="button" onClick={() => { setSelectedMenuId(card.menuId); setShowSelectedSettings(false); }} className={cn("rounded-[24px] border px-4 py-4 text-left transition", card.tone === "amber" ? "border-[#f6dfb2] bg-[#fff8e9]" : card.tone === "rose" ? "border-[#f4d7dc] bg-[#fff5f6]" : "border-[#d9e3f6] bg-[#f8fbff]")}>
+            <button
+              key={card.key}
+              type="button"
+              onClick={() => {
+                setSelectedMenuId(card.menuId);
+                setShowSelectedSettings(true);
+              }}
+              className={cn(
+                "rounded-[24px] border px-4 py-4 text-left",
+                INTERACTIVE_CARD_CLASS,
+                card.tone === "amber"
+                  ? "border-[#f6dfb2] bg-[#fff8e9]"
+                  : card.tone === "rose"
+                    ? "border-[#f4d7dc] bg-[#fff5f6]"
+                    : "border-[#d9e3f6] bg-[#f8fbff]",
+              )}
+            >
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">{card.label}</p>
               <p className="mt-3 text-xl font-semibold text-[#13233f]">{card.name}</p>
               <p className="mt-2 text-sm font-medium text-[#425673]">{card.value}</p>
@@ -259,7 +485,21 @@ export function ResultsDashboard({ state, result, dispatch, isInputTrayOpen, onO
                 const status = getMenuStatus(menuResult, state.targetIngredientRate);
                 const active = menuResult.menuId === selectedMenuResult?.menuId;
                 return (
-                  <button key={menuResult.menuId} type="button" onClick={() => { setSelectedMenuId(menuResult.menuId); setShowSelectedSettings(false); }} className={cn("flex w-full items-center justify-between gap-3 rounded-[22px] border px-4 py-4 text-left transition", active ? "border-[#1b4797] bg-[#eef3ff] shadow-[0_14px_26px_rgba(27,71,151,0.10)]" : "border-[#e3ebf9] bg-white hover:border-[#a9bfe8] hover:bg-[#f8fbff]")}>
+                  <button
+                    key={menuResult.menuId}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMenuId(menuResult.menuId);
+                      setShowSelectedSettings(true);
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-3 rounded-[22px] border px-4 py-4 text-left",
+                      INTERACTIVE_CARD_CLASS,
+                      active
+                        ? "border-[#1b4797] bg-[#eef3ff] shadow-[0_14px_26px_rgba(27,71,151,0.10)]"
+                        : "border-[#e3ebf9] bg-white hover:border-[#a9bfe8] hover:bg-[#f8fbff]",
+                    )}
+                  >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="truncate text-base font-semibold text-[#13233f]">{menuResult.name}</p>
@@ -287,8 +527,15 @@ export function ResultsDashboard({ state, result, dispatch, isInputTrayOpen, onO
                   </div>
                   <p className="mt-2 text-sm text-[#61728f]">{selectedMenuResult.temperatureSupport === "both" ? "HOT / ICE 모두 판매" : `${selectedMenuResult.temperatureSupport.toUpperCase()} 전용 메뉴`}</p>
                 </div>
-                <button type="button" onClick={() => setShowSelectedSettings((current) => !current)} className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]">
-                  {showSelectedSettings ? "세부 수치 닫기" : "세부 수치 열기"}
+                <button
+                  type="button"
+                  onClick={() => setShowSelectedSettings((current) => !current)}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-full border border-[#d7e2f7] bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]",
+                    FLOATING_ACTION_CLASS,
+                  )}
+                >
+                  {showSelectedSettings ? "메뉴 스펙 닫기" : "메뉴 스펙 열기"}
                 </button>
               </div>
 
@@ -316,20 +563,135 @@ export function ResultsDashboard({ state, result, dispatch, isInputTrayOpen, onO
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                <MenuMetric label="현재 원재료비" value={formatCurrency(selectedMenuResult.directCost)} tone="blue" />
-                <MenuMetric label="30% 허용 원재료비" value={formatCurrency(selectedMenuResult.targetIngredientBudget)} tone="amber" />
-                <MenuMetric label="현재 원재료비율" value={formatPercent(selectedMenuResult.directIngredientRate)} tone={selectedMenuResult.directIngredientRate > state.targetIngredientRate ? "amber" : "emerald"} />
-                <MenuMetric label="운영 원가율" value={formatPercent(selectedMenuResult.costRate)} tone={selectedMenuResult.costRate >= 0.45 ? "rose" : "amber"} />
-                <MenuMetric label="잔당 공헌이익" value={formatCurrency(selectedMenuResult.contributionMargin)} tone="emerald" />
+              <div className="mt-4 rounded-[24px] border border-[#d9e3f6] bg-[#f8fbff] p-3">
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                  <StripMetric label="현재 원재료비" value={formatCurrency(selectedMenuResult.directCost)} />
+                  <StripMetric
+                    label="30% 허용 원재료비"
+                    value={formatCurrency(selectedMenuResult.targetIngredientBudget)}
+                    emphasize
+                  />
+                  <StripMetric
+                    label="현재 원재료비율"
+                    value={formatPercent(selectedMenuResult.directIngredientRate)}
+                  />
+                  <StripMetric label="운영 원가율" value={formatPercent(selectedMenuResult.costRate)} />
+                  <StripMetric label="잔당 공헌이익" value={formatCurrency(selectedMenuResult.contributionMargin)} />
+                </div>
               </div>
 
               {showSelectedSettings ? (
-                <div className="mt-4 grid gap-3 md:grid-cols-4">
-                  <MenuMetric label="월 공헌이익" value={formatCompactCurrency(selectedMenuResult.monthlyContribution)} tone="blue" />
-                  <MenuMetric label="30% 기준가" value={formatCurrency(selectedMenuResult.ingredientRecommendedAveragePrice)} tone="amber" />
-                  <MenuMetric label="목표 순익 기준가" value={formatCurrency(selectedMenuResult.goalRecommendedAveragePrice)} tone="blue" />
-                  <button type="button" onClick={onOpenInputTray} className="rounded-2xl bg-[#eef3ff] px-4 py-3 text-sm font-semibold text-[#1b4797]">세부 비용 패널 열기</button>
+                <div className="mt-4 space-y-4">
+                  <div className="grid gap-3 lg:grid-cols-[0.95fr_1fr_1fr_0.9fr]">
+                    <DetailMetricCard
+                      label="월 공헌이익"
+                      value={formatCompactCurrency(selectedMenuResult.monthlyContribution)}
+                      hint="이 메뉴가 한 달에 남기는 금액"
+                    />
+                    <DetailMetricCard
+                      label="30% 기준가"
+                      value={formatCurrency(selectedMenuResult.ingredientRecommendedAveragePrice)}
+                      hint="원재료비율 목표만 맞춘 가격"
+                    />
+                    <DetailMetricCard
+                      label="목표 순익 기준가"
+                      value={formatCurrency(selectedMenuResult.goalRecommendedAveragePrice)}
+                      hint="목표 월 순이익까지 반영한 가격"
+                      accent="blue"
+                    />
+                    <button
+                      type="button"
+                      onClick={onOpenInputTray}
+                      className={cn(
+                        "rounded-[22px] bg-[#1b4797] px-4 py-4 text-left text-white shadow-[0_14px_30px_rgba(27,71,151,0.18)] hover:bg-[#163d82]",
+                        FLOATING_ACTION_CLASS,
+                      )}
+                    >
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">
+                        Action
+                      </p>
+                      <p className="mt-2 text-base font-semibold">세부 비용 패널 열기</p>
+                      <p className="mt-1 text-xs leading-5 text-white/75">
+                        공통 비용과 단가를 더 손봅니다.
+                      </p>
+                    </button>
+                  </div>
+
+                  <div className="rounded-[24px] border border-[#d9e3f6] bg-white p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6c7fa5]">
+                          Menu Spec
+                        </p>
+                        <h5 className="mt-1 text-lg font-semibold text-[#13233f]">
+                          선택한 메뉴 상세 설정
+                        </h5>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <InlineSpecField
+                          label="판매 비중"
+                          value={selectedMenu.share}
+                          suffix="%"
+                          onChange={(value) =>
+                            dispatch({
+                              type: "updateMenuField",
+                              menuId: selectedMenu.id,
+                              field: "share",
+                              value,
+                            })
+                          }
+                        />
+                        {selectedMenu.temperatureSupport === "both" ? (
+                          <InlineSpecField
+                            label="HOT 비중"
+                            value={selectedMenu.hotShare}
+                            suffix="%"
+                            onChange={(value) =>
+                              dispatch({
+                                type: "updateMenuField",
+                                menuId: selectedMenu.id,
+                                field: "hotShare",
+                                value,
+                              })
+                            }
+                          />
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 space-y-4">
+                      {(["hot", "ice"] as Temperature[])
+                        .filter((temperature) => selectedMenu.variants[temperature])
+                        .map((temperature) => (
+                          <VariantSpecEditor
+                            key={temperature}
+                            temperature={temperature}
+                            variant={selectedMenu.variants[temperature]!}
+                            ingredientCatalog={ingredientCatalog}
+                            packagingCatalog={packagingCatalog}
+                            onVariantFieldChange={(field, value) =>
+                              dispatch({
+                                type: "updateMenuVariantField",
+                                menuId: selectedMenu.id,
+                                temperature,
+                                field,
+                                value,
+                              })
+                            }
+                            onUsageChange={(usageKind, itemId, value) =>
+                              dispatch({
+                                type: "updateMenuUsage",
+                                menuId: selectedMenu.id,
+                                temperature,
+                                usageKind,
+                                itemId,
+                                value,
+                              })
+                            }
+                          />
+                        ))}
+                    </div>
+                  </div>
                 </div>
               ) : null}
             </section>
@@ -343,11 +705,7 @@ export function ResultsDashboard({ state, result, dispatch, isInputTrayOpen, onO
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">Profit Diagnosis</p>
               <h3 className="mt-2 text-xl font-semibold text-[#13233f]">손익 진단</h3>
-              <p className="mt-2 text-sm leading-6 text-[#61728f]">메뉴와 비용 중 어디를 먼저 손봐야 하는지 빠르게 보는 영역입니다.</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => dispatch({ type: "setAnalysisMode", mode: "current" })} className={cn("rounded-full px-4 py-2 text-sm font-semibold transition", state.analysisMode === "current" ? "bg-[#1b4797] text-white" : "bg-[#eef3ff] text-[#1b4797] hover:bg-[#dde8ff]")}>현재 기준 분석</button>
-              <button type="button" onClick={() => dispatch({ type: "setAnalysisMode", mode: "target" })} className={cn("rounded-full px-4 py-2 text-sm font-semibold transition", state.analysisMode === "target" ? "bg-[#1b4797] text-white" : "bg-[#eef3ff] text-[#1b4797] hover:bg-[#dde8ff]")}>목표 기준 역산</button>
+              <p className="mt-2 text-sm leading-6 text-[#61728f]">현재 상태 진단과 목표 기준 역산을 한 번에 같이 봅니다.</p>
             </div>
           </div>
           <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -355,16 +713,14 @@ export function ResultsDashboard({ state, result, dispatch, isInputTrayOpen, onO
             <SummaryStat label="먼저 손볼 메뉴" value={highestRawRateMenu?.name ?? "계산 대기"} description={highestRawRateMenu ? `원재료비율 ${formatPercent(highestRawRateMenu.directIngredientRate)}` : "목표 원재료비율을 가장 크게 넘는 메뉴가 표시됩니다."} accent="amber" />
             <SummaryStat label="운영비가 무거운 메뉴" value={highestEffectiveCostMenu?.name ?? "계산 대기"} description={highestEffectiveCostMenu ? `운영 원가율 ${formatPercent(highestEffectiveCostMenu.costRate)}` : "포장재와 수수료까지 넣었을 때 가장 무거운 메뉴가 표시됩니다."} accent="rose" />
           </div>
-          {state.analysisMode === "target" ? (
-            <div className="mt-5 rounded-[26px] border border-[#d9e3f6] bg-[#f8fbff] p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]"><Goal className="h-4 w-4" />목표 기준 역산</div>
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                <MenuMetric label="현재 월 순이익" value={formatCompactCurrency(result.totals.monthlyNetProfit)} />
-                <MenuMetric label="목표까지 차이" value={formatCompactCurrency(result.totals.targetMonthlyGap)} tone="amber" />
-                <MenuMetric label="필요 객단가" value={formatCompactCurrency(calculation.requiredAverageTicket)} tone="blue" />
-              </div>
+          <div className="mt-5 rounded-[26px] border border-[#d9e3f6] bg-[#f8fbff] p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]"><Goal className="h-4 w-4" />목표 기준 역산</div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <DetailMetricCard label="현재 월 순이익" value={formatCompactCurrency(result.totals.monthlyNetProfit)} hint="지금 설정으로 남는 금액" />
+              <DetailMetricCard label="목표까지 차이" value={formatCompactCurrency(result.totals.targetMonthlyGap)} hint="목표 월 순이익까지 남은 차이" />
+              <DetailMetricCard label="필요 객단가" value={formatCompactCurrency(calculation.requiredAverageTicket)} hint="목표를 맞추기 위해 필요한 평균 객단가" accent="blue" />
             </div>
-          ) : null}
+          </div>
         </div>
 
         <aside className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_48px_rgba(27,71,151,0.08)]">
@@ -373,7 +729,18 @@ export function ResultsDashboard({ state, result, dispatch, isInputTrayOpen, onO
               <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]"><Sparkles className="h-4 w-4" />AI 분석</div>
               <p className="mt-2 text-sm leading-6 text-[#61728f]">지금 손봐야 할 메뉴와 비용을 짧게 읽어주는 보조 분석입니다.</p>
             </div>
-            <button type="button" onClick={() => void handleRunAiInsights()} disabled={aiStatus === "loading"} className={cn("inline-flex min-w-[110px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition", aiStatus === "loading" ? "cursor-wait bg-[#dbe6fb] text-[#5d76a9]" : "bg-[#1b4797] text-white hover:bg-[#163d82]")}>
+            <button
+              type="button"
+              onClick={() => void handleRunAiInsights()}
+              disabled={aiStatus === "loading"}
+              className={cn(
+                "inline-flex min-w-[110px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold",
+                FLOATING_ACTION_CLASS,
+                aiStatus === "loading"
+                  ? "cursor-wait bg-[#dbe6fb] text-[#5d76a9]"
+                  : "bg-[#1b4797] text-white hover:bg-[#163d82]",
+              )}
+            >
               <Sparkles className="h-4 w-4" />{aiStatus === "loading" ? "AI 분석 중" : "AI 분석"}
             </button>
           </div>
@@ -384,7 +751,19 @@ export function ResultsDashboard({ state, result, dispatch, isInputTrayOpen, onO
           </div>
           {aiMessage ? <div className={cn("mt-4 rounded-[18px] border px-4 py-3 text-sm leading-6", aiStatus === "error" ? "border-[#f4d7dc] bg-[#fff5f6] text-[#8f4152]" : "border-[#d9e3f6] bg-[#f8fbff] text-[#5a6d8f]")}>{aiMessage}</div> : null}
           <div className="mt-4 space-y-3">{displayedInsights.map((insight) => <div key={insight} className="rounded-[22px] bg-[#f8fbff] p-4 text-sm leading-7 text-[#425673]">{insight}</div>)}</div>
-          <div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={onOpenInputTray} className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]"><WalletCards className="h-4 w-4" />세부 비용 더 조정하기</button></div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onOpenInputTray}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border border-[#d7e2f7] bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]",
+                FLOATING_ACTION_CLASS,
+              )}
+            >
+              <WalletCards className="h-4 w-4" />
+              세부 비용 더 조정하기
+            </button>
+          </div>
         </aside>
       </section>
 
