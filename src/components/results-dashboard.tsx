@@ -61,11 +61,17 @@ function NumberInput({
 function SummaryChip({
   label,
   value,
+  caption,
   tone = "blue",
+  className,
+  valueClassName,
 }: {
   label: string;
   value: string;
+  caption: string;
   tone?: "blue" | "amber" | "rose" | "emerald";
+  className?: string;
+  valueClassName?: string;
 }) {
   const toneClass =
     tone === "amber"
@@ -81,12 +87,16 @@ function SummaryChip({
       className={cn(
         "rounded-[18px] border px-4 py-3 shadow-[0_8px_18px_rgba(27,71,151,0.04)]",
         toneClass,
+        className,
       )}
     >
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6c7fa5]">
         {label}
       </p>
-      <p className="mt-2 text-base font-semibold leading-none text-[#13233f]">{value}</p>
+      <p className={cn("mt-2 text-base font-semibold leading-none text-[#13233f]", valueClassName)}>
+        {value}
+      </p>
+      <p className="mt-2 text-xs leading-5 text-[#61728f]">{caption}</p>
     </div>
   );
 }
@@ -197,15 +207,21 @@ function EditablePriceGroup({
 function RecommendedPriceList({
   prices,
   inverse = false,
+  large = false,
 }: {
   prices: Partial<Record<Temperature, number>>;
   inverse?: boolean;
+  large?: boolean;
 }) {
   return (
     <div
       className={cn(
         "space-y-1 font-semibold",
-        inverse ? "text-base text-white" : "text-sm text-[#13233f]",
+        inverse
+          ? large
+            ? "text-xl text-white"
+            : "text-base text-white"
+          : "text-sm text-[#13233f]",
       )}
     >
       {Object.entries(prices).map(([temperature, price]) => (
@@ -676,15 +692,25 @@ export function ResultsDashboard({
           </div>
         </div>
 
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
           <SummaryChip
-            label="월 순이익"
+            label="현재 월 순이익"
             value={formatCompactCurrency(result.totals.monthlyNetProfit)}
+            caption="현재 판매가와 입력 비용을 그대로 반영한 결과입니다."
             tone={result.totals.monthlyNetProfit >= 0 ? "blue" : "rose"}
+            className="xl:col-span-2"
+            valueClassName="text-2xl"
           />
           <SummaryChip
-            label="평균 원재료비율"
+            label="목표 달성 객단가"
+            value={formatCompactCurrency(calculation.requiredAverageTicket)}
+            caption="목표 월 순이익을 맞추려면 평균적으로 필요한 객단가입니다."
+            tone="amber"
+          />
+          <SummaryChip
+            label="현재 원재료비율"
             value={formatPercent(averageIngredientRate)}
+            caption="직접 원재료만 반영한 비율입니다."
             tone={
               averageIngredientRate > state.targetIngredientRate + 0.02
                 ? "rose"
@@ -694,8 +720,9 @@ export function ResultsDashboard({
             }
           />
           <SummaryChip
-            label="실질 원가율"
+            label="운영 반영 원가율"
             value={formatPercent(averageEffectiveCostRate)}
+            caption="포장재, 수수료, 로스까지 포함한 비율입니다."
             tone={
               averageEffectiveCostRate >= 0.45
                 ? "rose"
@@ -704,8 +731,11 @@ export function ResultsDashboard({
                   : "emerald"
             }
           />
-          <SummaryChip label="필요 객단가" value={formatCompactCurrency(calculation.requiredAverageTicket)} tone="amber" />
-          <SummaryChip label="연 순이익" value={formatCompactCurrency(result.totals.annualNetProfit)} />
+          <SummaryChip
+            label="현재 기준 연 순이익"
+            value={formatCompactCurrency(result.totals.annualNetProfit)}
+            caption="지금 설정을 12개월 유지했을 때의 예상치입니다."
+          />
         </div>
       </section>
 
@@ -713,11 +743,11 @@ export function ResultsDashboard({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
-              Step 1
+              Quick Setup
             </p>
-            <h3 className="mt-2 text-xl font-semibold text-[#13233f]">3초 퀵셋업</h3>
+            <h3 className="mt-2 text-xl font-semibold text-[#13233f]">빠른 입력</h3>
             <p className="mt-2 text-sm leading-6 text-[#61728f]">
-              처음에는 핵심 숫자 몇 개만 잡고 결과를 보는 편이 훨씬 빠릅니다.
+              처음에는 매출, 객단가, 월세 정도만 먼저 맞추고 권장가 변화를 보는 편이 빠릅니다.
             </p>
           </div>
 
@@ -817,12 +847,11 @@ export function ResultsDashboard({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
-              Step 2
+              Menu Pricing
             </p>
-            <h3 className="mt-2 text-xl font-semibold text-[#13233f]">메뉴별 가격과 권장가</h3>
+            <h3 className="mt-2 text-xl font-semibold text-[#13233f]">메뉴별 권장가</h3>
             <p className="mt-2 text-sm leading-6 text-[#61728f]">
-              메뉴별로 현재 판매가, 원재료비율 {formatPercent(state.targetIngredientRate)} 기준 적정가,
-              목표 순이익 기준 조정가를 함께 봅니다.
+              현재 판매가와 30% 기준가, 목표 순익 기준가를 한 카드 안에서 바로 비교합니다.
             </p>
           </div>
 
@@ -861,7 +890,7 @@ export function ResultsDashboard({
 
             return (
               <Fragment key={menu.id}>
-                <article className="rounded-[28px] border border-[#d9e3f6] bg-[#fbfdff] p-4 shadow-[0_12px_30px_rgba(27,71,151,0.05)]">
+                <article className="rounded-[28px] border border-[#d9e3f6] bg-[#fbfdff] p-5 shadow-[0_12px_30px_rgba(27,71,151,0.05)]">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
@@ -887,10 +916,13 @@ export function ResultsDashboard({
                     </button>
                   </div>
 
-                  <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1.05fr]">
+                  <div className="mt-5 grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
                     <div className="rounded-[24px] border border-[#e0e8f8] bg-white p-4">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
                         현재 판매가
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-[#61728f]">
+                        실제로 받고 있는 가격입니다. 여기 값을 바꾸면 아래 손익이 바로 다시 계산됩니다.
                       </p>
                       <div className="mt-3">
                         <EditablePriceGroup
@@ -909,14 +941,14 @@ export function ResultsDashboard({
                       </div>
                     </div>
 
-                    <div className="rounded-[24px] border border-[#2955a4] bg-[linear-gradient(135deg,#1b4797_0%,#2f62b5_100%)] p-4 text-white shadow-[0_16px_34px_rgba(27,71,151,0.20)]">
+                    <div className="rounded-[24px] border border-[#2955a4] bg-[linear-gradient(135deg,#1b4797_0%,#2f62b5_100%)] p-5 text-white shadow-[0_16px_34px_rgba(27,71,151,0.20)]">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/72">
                             최종 권장 판매가
                           </p>
                           <p className="mt-1 text-xs text-white/70">
-                            원재료비율과 목표 순이익을 함께 반영한 가격입니다.
+                            30% 기준가와 목표 순익 기준가 중 더 높은 값을 권장가로 씁니다.
                           </p>
                         </div>
                         <span className="rounded-full bg-white/14 px-3 py-1 text-[11px] font-semibold">
@@ -924,11 +956,17 @@ export function ResultsDashboard({
                         </span>
                       </div>
 
-                      <div className="mt-3">
-                        <RecommendedPriceList prices={menuResult.recommendedPrices} inverse />
+                      <div className="mt-4">
+                        <RecommendedPriceList prices={menuResult.recommendedPrices} inverse large />
                       </div>
 
                       <div className="mt-4 grid gap-2 rounded-[18px] bg-white/10 p-3 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-white/72">현재 평균가</span>
+                          <span className="font-semibold text-white">
+                            {formatCurrency(menuResult.currentAveragePrice)}
+                          </span>
+                        </div>
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-white/72">원재료비 기준</span>
                           <span className="font-semibold text-white">
@@ -955,19 +993,22 @@ export function ResultsDashboard({
                           ) : (
                             <ArrowDownCircle className="h-3.5 w-3.5" />
                           )}
-                          현재가 대비 {menuResult.priceGap >= 0 ? "+" : ""}
+                          현재가보다 {menuResult.priceGap >= 0 ? "+" : ""}
                           {formatCurrency(menuResult.priceGap)}
                         </span>
+                        <p className="mt-2 text-xs text-white/72">
+                          왜 이 가격인지: 현재가, 원재료 30% 기준, 목표 월 순익 기준을 함께 비교한 결과입니다.
+                        </p>
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                    <MenuMetric label="잔당 원재료비" value={formatCurrency(menuResult.directCost)} tone="blue" />
-                    <MenuMetric label="목표 원재료비" value={formatCurrency(menuResult.targetIngredientBudget)} tone="amber" />
-                    <MenuMetric label="원재료비율" value={formatPercent(menuResult.directIngredientRate)} tone={rawRateTone} />
-                    <MenuMetric label="실질 원가율" value={formatPercent(menuResult.costRate)} tone={effectiveTone} />
-                    <MenuMetric label="잔당 이익" value={formatCurrency(menuResult.contributionMargin)} tone="emerald" />
+                    <MenuMetric label="현재 잔당 원재료비" value={formatCurrency(menuResult.directCost)} tone="blue" />
+                    <MenuMetric label="30% 기준 허용 원재료비" value={formatCurrency(menuResult.targetIngredientBudget)} tone="amber" />
+                    <MenuMetric label="현재 원재료비율" value={formatPercent(menuResult.directIngredientRate)} tone={rawRateTone} />
+                    <MenuMetric label="운영 반영 원가율" value={formatPercent(menuResult.costRate)} tone={effectiveTone} />
+                    <MenuMetric label="잔당 공헌이익" value={formatCurrency(menuResult.contributionMargin)} tone="emerald" />
                   </div>
 
                   {expanded ? (
@@ -1051,11 +1092,11 @@ export function ResultsDashboard({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
-                Step 3
+                Profit Diagnosis
               </p>
-              <h3 className="mt-2 text-xl font-semibold text-[#13233f]">대시보드</h3>
+              <h3 className="mt-2 text-xl font-semibold text-[#13233f]">손익 진단</h3>
               <p className="mt-2 text-sm leading-6 text-[#61728f]">
-                지금 이익 구조와 가격 조정 우선순위를 빠르게 판단하는 영역입니다.
+                어떤 메뉴와 어떤 비용을 먼저 손봐야 하는지 빠르게 판단하는 영역입니다.
               </p>
             </div>
 
@@ -1089,30 +1130,30 @@ export function ResultsDashboard({
 
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             <SummaryStat
-              label="연 순이익"
+              label="1년 기준 순이익"
               value={formatCompactCurrency(result.totals.annualNetProfit)}
-              description="현재 설정을 12개월 유지했을 때 예상 순이익입니다."
+              description="지금 가격과 비용 구조를 12개월 유지했을 때의 예상 순이익입니다."
               accent="blue"
             />
             <SummaryStat
-              label="원재료비율 높은 메뉴"
+              label="먼저 손볼 메뉴"
               value={highestRawRateMenu?.name ?? "계산 대기"}
               description={
                 highestRawRateMenu
-                  ? `${formatPercent(highestRawRateMenu.directIngredientRate)} / 목표 ${percentFromRatio(
+                  ? `현재 원재료비율 ${formatPercent(highestRawRateMenu.directIngredientRate)} / 목표 ${percentFromRatio(
                       state.targetIngredientRate,
                     )}%`
-                  : "메뉴별 원재료비율을 계산하면 여기에 표시됩니다."
+                  : "목표 원재료비율을 가장 크게 넘는 메뉴가 여기에 표시됩니다."
               }
               accent="amber"
             />
             <SummaryStat
-              label="실질 원가율 높은 메뉴"
+              label="운영비가 무거운 메뉴"
               value={highestEffectiveCostMenu?.name ?? "계산 대기"}
               description={
                 highestEffectiveCostMenu
-                  ? `${formatPercent(highestEffectiveCostMenu.costRate)} / 포장·수수료 포함`
-                  : "운영 원가 기준으로 가장 무거운 메뉴가 표시됩니다."
+                  ? `운영 반영 원가율 ${formatPercent(highestEffectiveCostMenu.costRate)} / 포장·수수료 포함`
+                  : "포장재와 수수료까지 넣었을 때 가장 무거운 메뉴가 표시됩니다."
               }
               accent="rose"
             />
@@ -1142,10 +1183,10 @@ export function ResultsDashboard({
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]">
                 <Sparkles className="h-4 w-4" />
-                자동 분석
+                AI 분석
               </div>
               <p className="mt-2 text-sm leading-6 text-[#61728f]">
-                기본 규칙 분석 위에 GPT 분석을 덧씌워, 지금 손봐야 할 메뉴와 비용을 바로 읽어줍니다.
+                지금 손봐야 할 메뉴와 비용을 문장으로 바로 읽어주는 보조 분석입니다.
               </p>
             </div>
 
@@ -1221,10 +1262,10 @@ export function ResultsDashboard({
       <section className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_48px_rgba(27,71,151,0.08)]">
         <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]">
           <Calculator className="h-4 w-4" />
-          전체 순익 구조
+          전체 손익 구조
         </div>
         <p className="mt-2 text-sm leading-6 text-[#61728f]">
-          어떤 항목이 손익을 가장 많이 차지하는지 막대 형태로 비교합니다.
+          원재료비, 포장재, 수수료, 인건비, 고정비 중 무엇이 손익을 가장 크게 끌어내리는지 비교합니다.
         </p>
 
         <div className="mt-5 grid gap-3">
@@ -1245,16 +1286,25 @@ export function ResultsDashboard({
             <p className="mt-3 text-xl font-semibold text-[#13233f]">
               {formatCompactCurrency(calculation.monthlyContribution)}
             </p>
+            <p className="mt-2 text-xs leading-5 text-[#61728f]">
+              직접 원가와 변동비를 뺀 뒤 남는 월 기준 여유 금액입니다.
+            </p>
           </div>
           <div className="rounded-[24px] bg-[#f8fbff] p-4">
             <p className="text-sm font-semibold text-[#18376c]">월 총매출</p>
             <p className="mt-3 text-xl font-semibold text-[#13233f]">
               {formatCompactCurrency(result.totals.monthlySalesGross)}
             </p>
+            <p className="mt-2 text-xs leading-5 text-[#61728f]">
+              현재 메뉴 가격과 판매 비중으로 추정한 한 달 총매출입니다.
+            </p>
           </div>
           <div className="rounded-[24px] bg-[#f8fbff] p-4">
             <p className="text-sm font-semibold text-[#18376c]">목표 달성 상태</p>
             <p className="mt-3 text-xl font-semibold text-[#13233f]">{result.feasibility.label}</p>
+            <p className="mt-2 text-xs leading-5 text-[#61728f]">
+              권장가 평균 인상폭을 기준으로 목표가 현실적인지 판정한 결과입니다.
+            </p>
           </div>
         </div>
       </section>

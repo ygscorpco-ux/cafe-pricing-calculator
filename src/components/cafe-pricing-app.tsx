@@ -229,7 +229,7 @@ export function CafePricingApp() {
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6c7fa5]">
-                Control Rail
+                Quick Controls
               </p>
               <h2 className="mt-2 text-xl font-semibold text-[#13233f]">
                 설정 변경 및 저장
