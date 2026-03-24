@@ -89,7 +89,7 @@ function SummaryStat({
     <article
       className={cn(
         compact
-          ? "rounded-[20px] border p-3 shadow-[0_8px_20px_rgba(27,71,151,0.04)]"
+          ? "rounded-[18px] border px-3 py-2.5 shadow-[0_6px_16px_rgba(27,71,151,0.04)]"
           : "rounded-[24px] border p-4 shadow-[0_10px_24px_rgba(27,71,151,0.05)]",
         accentClass,
       )}
@@ -97,10 +97,20 @@ function SummaryStat({
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
         {label}
       </p>
-      <p className={cn("font-semibold text-[#13233f]", compact ? "mt-2 text-xl" : "mt-3 text-2xl")}>
+      <p
+        className={cn(
+          "font-semibold text-[#13233f]",
+          compact ? "mt-1.5 text-lg leading-none" : "mt-3 text-2xl",
+        )}
+      >
         {value}
       </p>
-      <p className={cn("text-[#61728f]", compact ? "mt-1 text-[11px] leading-4" : "mt-2 text-xs leading-5")}>
+      <p
+        className={cn(
+          "text-[#61728f]",
+          compact ? "mt-1 truncate text-[10px] leading-4" : "mt-2 text-xs leading-5",
+        )}
+      >
         {description}
       </p>
     </article>
@@ -491,17 +501,22 @@ export function ResultsDashboard({
 
   return (
     <section className="space-y-5">
-      <section className="sticky top-3 z-20 rounded-[28px] border border-[#d9e3f6] bg-white/92 p-4 shadow-[0_18px_42px_rgba(27,71,151,0.10)] backdrop-blur">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
-              Answer First
+      <section className="sticky top-3 z-20 rounded-[24px] border border-[#d9e3f6] bg-white/92 p-3 shadow-[0_14px_30px_rgba(27,71,151,0.09)] backdrop-blur">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
+                Answer First
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-[#13233f]">지금 먼저 볼 숫자</h2>
+            </div>
+            <p className="hidden xl:block text-xs text-[#61728f]">
+              가격을 바꾸면 아래 숫자가 바로 다시 계산됩니다.
             </p>
-            <h2 className="mt-1 text-xl font-semibold text-[#13233f]">지금 먼저 볼 숫자</h2>
           </div>
 
-          <div className="flex flex-col gap-2 rounded-[22px] border border-[#d9e3f6] bg-[#f8fbff] p-3 sm:min-w-[280px]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
+          <div className="flex flex-col gap-1.5 rounded-[18px] border border-[#d9e3f6] bg-[#f8fbff] p-2.5 sm:min-w-[260px]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
               목표 월 순이익
             </p>
             <NumberInput
@@ -509,20 +524,20 @@ export function ResultsDashboard({
               onChange={(value) => dispatch({ type: "setTargetMonthlyNetProfit", value })}
               suffix="원"
             />
-            <div className="flex items-center gap-2 text-xs text-[#61728f]">
-              <Goal className="h-3.5 w-3.5" />
-              <span>이 값을 바꾸면 권장가와 목표 달성 여부가 바로 다시 계산됩니다.</span>
+            <div className="flex items-center gap-2 text-[10px] text-[#61728f]">
+              <Goal className="h-3 w-3" />
+              <span>값을 바꾸면 권장가와 목표 달성 여부가 다시 계산됩니다.</span>
             </div>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           <SummaryStat
             label="월 순이익"
             value={formatCompactCurrency(result.totals.monthlyNetProfit)}
             description={
               result.feasibility.status === "surplus"
-                ? "이미 목표를 넘긴 상태입니다."
+                ? "이미 목표를 넘긴 상태"
                 : `목표까지 ${formatCompactCurrency(result.totals.targetMonthlyGap)} 차이`
             }
             accent={result.totals.monthlyNetProfit >= 0 ? "blue" : "rose"}
@@ -531,20 +546,20 @@ export function ResultsDashboard({
           <SummaryStat
             label="연 순이익"
             value={formatCompactCurrency(result.totals.annualNetProfit)}
-            description="현재 설정을 12개월 유지했을 때의 예상 순이익입니다."
+            description="현재 설정 기준 12개월 예상"
             compact
           />
           <SummaryStat
             label="필요 객단가"
             value={formatCompactCurrency(calculation.requiredAverageTicket)}
-            description="현재 방문객 수와 운영일 기준으로 목표를 맞추기 위해 필요한 평균 객단가입니다."
+            description="목표를 맞추기 위해 필요한 평균 객단가"
             accent="amber"
             compact
           />
           <SummaryStat
             label="평균 원가율"
             value={formatPercent(averageCostRate)}
-            description={`목표 달성 평가는 ${result.feasibility.label} 단계입니다.`}
+            description={`목표 달성 평가는 ${result.feasibility.label}`}
             accent={tone === "rose" ? "rose" : tone === "amber" ? "amber" : "emerald"}
             compact
           />
