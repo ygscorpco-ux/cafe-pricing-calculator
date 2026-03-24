@@ -62,45 +62,46 @@ function RailSegment({
 }
 
 export function CafePricingApp() {
-  const [state, dispatch] = useReducer(appReducer, undefined, () => {
-    if (typeof window === "undefined") {
-      return createInitialAppState();
-    }
-
-    return loadStoredState() ?? createInitialAppState();
-  });
-  const [savedScenarios, setSavedScenarios] = useState<SavedScenario[]>(() => {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    return loadStoredScenarios();
-  });
+  const [state, dispatch] = useReducer(appReducer, undefined, createInitialAppState);
+  const [savedScenarios, setSavedScenarios] = useState<SavedScenario[]>([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState("");
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("results");
   const [isInputTrayOpen, setIsInputTrayOpen] = useState(false);
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => !state.wizard.completed);
+  const [hasBooted, setHasBooted] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [forceOnboardingOpen, setForceOnboardingOpen] = useState(false);
   const inlineInputTrayRef = useRef<HTMLDivElement | null>(null);
-  const skipStatePersist = useRef(true);
-  const skipScenarioPersist = useRef(true);
 
   useEffect(() => {
-    if (skipStatePersist.current) {
-      skipStatePersist.current = false;
+    const storedState = loadStoredState();
+    const storedScenarios = loadStoredScenarios();
+    const frame = window.requestAnimationFrame(() => {
+      if (storedState) {
+        dispatch({ type: "hydrate", state: storedState });
+      }
+
+      setSavedScenarios(storedScenarios);
+      setHasBooted(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    if (!hasBooted) {
       return;
     }
 
     saveStoredState(state);
-  }, [state]);
+  }, [hasBooted, state]);
 
   useEffect(() => {
-    if (skipScenarioPersist.current) {
-      skipScenarioPersist.current = false;
+    if (!hasBooted) {
       return;
     }
 
     saveStoredScenarios(savedScenarios);
-  }, [savedScenarios]);
+  }, [hasBooted, savedScenarios]);
 
   useEffect(() => {
     if (!isInputTrayOpen || typeof window === "undefined") {
@@ -126,6 +127,28 @@ export function CafePricingApp() {
   const selectedScenario = savedScenarios.find(
     (scenario) => scenario.id === effectiveSelectedScenarioId,
   );
+  const shouldShowOnboarding =
+    hasBooted &&
+    (forceOnboardingOpen || (!onboardingDismissed && !state.wizard.completed));
+
+  if (!hasBooted) {
+    return (
+      <div className="min-h-screen px-4 py-4 sm:px-6 sm:py-6 xl:px-8">
+        <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1660px] items-center justify-center rounded-[34px] border border-white/80 bg-white/90 shadow-[0_30px_80px_rgba(27,71,151,0.10)] backdrop-blur">
+          <div className="rounded-[28px] border border-[#dbe5f9] bg-[#f8fbff] px-5 py-4 shadow-[0_16px_34px_rgba(27,71,151,0.08)]">
+            <Image
+              src="/branding/cafe.png"
+              alt="얼만교 로고"
+              width={220}
+              height={52}
+              className="h-auto w-[180px] sm:w-[220px]"
+              priority
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleSaveScenario = () => {
     const name = window.prompt("저장할 설정 이름을 입력해 주세요.", "내 설정");
@@ -236,7 +259,10 @@ export function CafePricingApp() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setIsOnboardingOpen(true)}
+                onClick={() => {
+                  setOnboardingDismissed(false);
+                  setForceOnboardingOpen(true);
+                }}
                 className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]"
               >
                 <Sparkles className="h-4 w-4" />
@@ -254,7 +280,8 @@ export function CafePricingApp() {
                 type="button"
                 onClick={() => {
                   dispatch({ type: "resetState" });
-                  setIsOnboardingOpen(true);
+                  setOnboardingDismissed(false);
+                  setForceOnboardingOpen(true);
                 }}
                 className="inline-flex items-center gap-2 rounded-full bg-[#f3f6fb] px-4 py-2.5 text-sm font-semibold text-[#4f6285]"
               >
@@ -388,11 +415,14 @@ export function CafePricingApp() {
 
       </div>
 
-      {isOnboardingOpen ? (
+      {shouldShowOnboarding ? (
         <OnboardingFlow
           state={state}
           dispatch={dispatch}
-          onClose={() => setIsOnboardingOpen(false)}
+          onClose={() => {
+            setOnboardingDismissed(true);
+            setForceOnboardingOpen(false);
+          }}
         />
       ) : null}
     </div>
