@@ -501,21 +501,21 @@ export function ResultsDashboard({
 
   return (
     <section className="space-y-5">
-      <section className="sticky top-3 z-20 rounded-[24px] border border-[#d9e3f6] bg-white/92 p-3 shadow-[0_14px_30px_rgba(27,71,151,0.09)] backdrop-blur">
+      <section className="sticky top-3 z-20 rounded-[20px] border border-[#d9e3f6] bg-white/94 px-3 py-2 shadow-[0_10px_22px_rgba(27,71,151,0.08)] backdrop-blur">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
                 Answer First
               </p>
-              <h2 className="mt-1 text-lg font-semibold text-[#13233f]">지금 먼저 볼 숫자</h2>
+              <h2 className="mt-0.5 text-base font-semibold text-[#13233f]">지금 먼저 볼 숫자</h2>
             </div>
-            <p className="hidden xl:block text-xs text-[#61728f]">
+            <p className="hidden xl:block text-[11px] text-[#61728f]">
               가격을 바꾸면 아래 숫자가 바로 다시 계산됩니다.
             </p>
           </div>
 
-          <div className="flex flex-col gap-1.5 rounded-[18px] border border-[#d9e3f6] bg-[#f8fbff] p-2.5 sm:min-w-[260px]">
+          <div className="flex flex-col gap-1 rounded-[16px] border border-[#d9e3f6] bg-[#f8fbff] px-2.5 py-2 sm:min-w-[240px]">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
               목표 월 순이익
             </p>
@@ -531,7 +531,7 @@ export function ResultsDashboard({
           </div>
         </div>
 
-        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           <SummaryStat
             label="월 순이익"
             value={formatCompactCurrency(result.totals.monthlyNetProfit)}
