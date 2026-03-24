@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import type { AiInsightRequest, AiInsightResponse } from "@/lib/ai-insights";
 
-const DEFAULT_MODEL = "gpt-5-mini";
+const DEFAULT_MODEL = "gpt-4o-mini";
 
 function normalizeInsights(items: string[]) {
   return items

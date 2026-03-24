@@ -43,12 +43,12 @@ npm run dev
 
 ```bash
 OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-5-mini
+OPENAI_MODEL=gpt-4o-mini
 ```
 
 - `OPENAI_API_KEY` 는 서버에서만 사용됩니다.
-- `OPENAI_MODEL` 은 선택값입니다. 비워두면 `gpt-5-mini` 를 기본 사용합니다.
-- 새 앱 기준으로는 더 최신 소형 모델을 쓰고 싶을 때 `gpt-5.4-mini` 로 바꿔도 됩니다.
+- `OPENAI_MODEL` 은 선택값입니다. 비워두면 `gpt-4o-mini` 를 기본 사용합니다.
+- 더 정교한 분석이 필요하면 `gpt-5-mini` 또는 `gpt-5.4-mini` 로 바꿔 비교할 수 있습니다.
 
 ## 스크립트
 
