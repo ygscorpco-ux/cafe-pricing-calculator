@@ -3,109 +3,120 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
 
+import { NumericInput } from "@/components/numeric-input";
 import type { AppAction } from "@/lib/app-state";
-import { TEMPLATES } from "@/lib/constants";
-import { cn } from "@/lib/utils";
 import type { AppState } from "@/lib/types";
+import { cn, percentFromRatio, ratioFromPercentInput } from "@/lib/utils";
 
 interface OnboardingFlowProps {
-  wizard: AppState["wizard"];
+  state: AppState;
   dispatch: React.Dispatch<AppAction>;
   onClose: () => void;
 }
 
-export function OnboardingFlow({
-  wizard,
-  dispatch,
-  onClose,
-}: OnboardingFlowProps) {
+function StepField({
+  label,
+  value,
+  suffix,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block">
+      <p className="mb-2 text-sm font-medium text-[#516281]">{label}</p>
+      <NumericInput value={value} onChange={onChange} suffix={suffix} className="h-12" />
+    </label>
+  );
+}
+
+function ChoiceCard({
+  active,
+  title,
+  description,
+  onClick,
+}: {
+  active: boolean;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-[24px] border px-5 py-4 text-left transition",
+        active
+          ? "border-[#1b4797] bg-[#eef3ff] shadow-[0_14px_26px_rgba(27,71,151,0.10)]"
+          : "border-[#d9e3f6] bg-white hover:border-[#9fb8ea] hover:bg-[#f8fbff]",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-base font-semibold text-[#13233f]">{title}</p>
+          <p className="mt-1 text-sm leading-6 text-[#62738f]">{description}</p>
+        </div>
+        <span
+          className={cn(
+            "mt-1 inline-flex h-7 w-7 items-center justify-center rounded-full border",
+            active
+              ? "border-[#1b4797] bg-[#1b4797] text-white"
+              : "border-[#cfdbf4] bg-white text-transparent",
+          )}
+        >
+          <Check className="h-4 w-4" />
+        </span>
+      </div>
+    </button>
+  );
+}
+
+export function OnboardingFlow({ state, dispatch, onClose }: OnboardingFlowProps) {
   const [stepIndex, setStepIndex] = useState(0);
 
   const steps = useMemo(
     () => [
       {
-        id: "sales-basis",
         eyebrow: "STEP 1",
-        title: "먼저 매출 기준을 정해볼게요.",
-        description:
-          "월 기준으로 생각하는지, 연 기준으로 생각하는지부터 정하면 뒤 숫자가 자연스럽게 맞춰집니다.",
-        helperTitle: "왜 먼저 정하나요?",
-        helperBody:
-          "이 기준은 계산 방식이 아니라 입력 편의의 기준입니다. 나중에 바꿔도 손익 계산은 자동으로 다시 맞춰집니다.",
-        options: [
-          {
-            value: "monthly",
-            label: "월매출 기준",
-            description: "대부분 초보 사장님이 가장 익숙하게 느끼는 방식입니다.",
-          },
-          {
-            value: "annual",
-            label: "연매출 기준",
-            description: "연간 목표나 사업계획서 기준으로 잡을 때 편합니다.",
-          },
-        ],
-        value: wizard.salesBasis,
-        onSelect: (value: string) =>
-          dispatch({
-            type: "setSalesBasis",
-            value: value as AppState["wizard"]["salesBasis"],
-          }),
+        title: "먼저 계산 기준을 맞춰둘게요.",
+        description: "처음 한 번만 기준을 정해두면 뒤 결과가 훨씬 덜 헷갈립니다.",
+        helperItems: ["월매출 / 연매출 기준", "부가세 포함 여부", "가격 계산 기준 통일"],
       },
       {
-        id: "vat-mode",
         eyebrow: "STEP 2",
-        title: "판매가에 부가세가 들어가 있나요?",
-        description:
-          "이 선택 하나로 공급가, 원가율, 목표 권장가 계산이 달라집니다. 헷갈리면 보통 카페 메뉴판 가격은 포함가로 보면 됩니다.",
-        helperTitle: "쉽게 보면",
-        helperBody:
-          "메뉴판에 적는 가격 그대로 계산하려면 포함가, 세금 별도 기준으로 내부 계산만 따로 보고 싶다면 별도가 더 편합니다.",
-        options: [
-          {
-            value: "inclusive",
-            label: "부가세 포함가",
-            description: "메뉴판 가격 그대로 입력하고 싶을 때",
-          },
-          {
-            value: "exclusive",
-            label: "부가세 별도가",
-            description: "공급가 기준으로 손익을 보고 싶을 때",
-          },
-        ],
-        value: wizard.vatMode,
-        onSelect: (value: string) =>
-          dispatch({
-            type: "setVatMode",
-            value: value as AppState["wizard"]["vatMode"],
-          }),
+        title: "핵심 숫자만 먼저 입력해 주세요.",
+        description: "처음부터 모든 항목을 넣을 필요는 없습니다. 매출, 객단가, 월세, 인건비 정도면 결과를 볼 수 있습니다.",
+        helperTitle: "이 단계가 중요한 이유",
+        helperItems: ["월 순이익 계산 시작값", "권장가의 기본 방향", "목표와 현재 차이 계산"],
       },
       {
-        id: "template",
         eyebrow: "STEP 3",
-        title: "가까운 운영 스타일을 골라주세요.",
-        description:
-          "처음에는 완벽하게 맞추려 하기보다, 가장 비슷한 템플릿을 골라놓고 결과를 본 뒤 조금씩 손보는 편이 훨씬 빠릅니다.",
-        helperTitle: "추천 방식",
-        helperBody:
-          "초기값은 템플릿으로 잡고, 실제 월세·인건비·카드비중만 빠르게 바꾸면 1차 손익은 바로 볼 수 있습니다.",
-        options: TEMPLATES.map((template) => ({
-          value: template.id,
-          label: template.name,
-          description: template.description,
-        })),
-        value: wizard.templateId,
-        onSelect: (value: string) =>
-          dispatch({
-            type: "applyTemplate",
-            templateId: value,
-          }),
+        title: "마지막으로 목표를 정할게요.",
+        description: "원하는 월 순이익과 원재료비 기준을 잡아두면 메뉴별 권장가가 바로 나옵니다.",
+        helperTitle: "결과 화면에서 바로 보이는 것",
+        helperItems: ["월 순이익 / 연 순이익", "메뉴별 현재가와 권장가 차이", "먼저 손볼 메뉴와 비용 요인"],
       },
     ],
-    [dispatch, wizard.salesBasis, wizard.templateId, wizard.vatMode],
+    [],
   );
 
   const currentStep = steps[stepIndex];
   const isLastStep = stepIndex === steps.length - 1;
+  const basisField = state.wizard.salesBasis === "monthly" ? "monthlySales" : "annualSales";
+  const basisLabel = state.wizard.salesBasis === "monthly" ? "월매출" : "연매출";
+  const basisValue =
+    state.wizard.salesBasis === "monthly"
+      ? state.store.sales.monthlySales
+      : state.store.sales.annualSales;
+
+  const handleSkip = () => {
+    dispatch({ type: "completeWizard" });
+    onClose();
+  };
 
   const handleNext = () => {
     if (!isLastStep) {
@@ -117,15 +128,10 @@ export function OnboardingFlow({
     onClose();
   };
 
-  const handleSkip = () => {
-    dispatch({ type: "completeWizard" });
-    onClose();
-  };
-
   return (
-    <div className="fixed inset-0 z-50 bg-[rgba(19,35,63,0.18)] px-4 py-6 backdrop-blur-sm sm:px-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(19,35,63,0.28)] px-4 py-6 backdrop-blur-sm sm:px-6">
       <div className="mx-auto flex min-h-full max-w-6xl items-center justify-center">
-        <div className="grid w-full gap-4 rounded-[36px] border border-white/70 bg-white shadow-[0_32px_120px_rgba(27,71,151,0.18)] lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="grid w-full gap-0 overflow-hidden rounded-[36px] border border-white/70 bg-white shadow-[0_32px_120px_rgba(27,71,151,0.18)] lg:grid-cols-[1.15fr_0.85fr]">
           <section className="p-6 sm:p-8 lg:p-10">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -149,43 +155,173 @@ export function OnboardingFlow({
               {currentStep.description}
             </p>
 
-            <div className="mt-8 grid gap-3">
-              {currentStep.options.map((option) => {
-                const active = currentStep.value === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => currentStep.onSelect(option.value)}
-                    className={cn(
-                      "rounded-[26px] border px-5 py-4 text-left transition",
-                      active
-                        ? "border-[#1b4797] bg-[#eef3ff] shadow-[0_16px_30px_rgba(27,71,151,0.12)]"
-                        : "border-[#d9e3f6] bg-white hover:border-[#9fb8ea] hover:bg-[#f8fbff]",
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-base font-semibold text-[#13233f]">{option.label}</p>
-                        <p className="mt-1 text-sm leading-6 text-[#62738f]">
-                          {option.description}
-                        </p>
-                      </div>
-                      <span
-                        className={cn(
-                          "mt-1 inline-flex h-7 w-7 items-center justify-center rounded-full border",
-                          active
-                            ? "border-[#1b4797] bg-[#1b4797] text-white"
-                            : "border-[#cfdbf4] bg-white text-transparent",
-                        )}
-                      >
-                        <Check className="h-4 w-4" />
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            {stepIndex === 0 ? (
+              <div className="mt-8 space-y-6">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <ChoiceCard
+                    active={state.wizard.salesBasis === "monthly"}
+                    title="월매출 기준"
+                    description="대부분 처음 가격을 맞출 때 가장 쉽게 생각하는 방식입니다."
+                    onClick={() => dispatch({ type: "setSalesBasis", value: "monthly" })}
+                  />
+                  <ChoiceCard
+                    active={state.wizard.salesBasis === "annual"}
+                    title="연매출 기준"
+                    description="사업계획이나 연간 목표 기준으로 볼 때 더 편합니다."
+                    onClick={() => dispatch({ type: "setSalesBasis", value: "annual" })}
+                  />
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <ChoiceCard
+                    active={state.wizard.vatMode === "inclusive"}
+                    title="부가세 포함가"
+                    description="메뉴판에 적힌 가격 그대로 넣고 보는 방식입니다."
+                    onClick={() => dispatch({ type: "setVatMode", value: "inclusive" })}
+                  />
+                  <ChoiceCard
+                    active={state.wizard.vatMode === "exclusive"}
+                    title="부가세 별도가"
+                    description="공급가 기준으로 가격 설계를 따로 볼 때 맞습니다."
+                    onClick={() => dispatch({ type: "setVatMode", value: "exclusive" })}
+                  />
+                </div>
+
+              </div>
+            ) : null}
+
+            {stepIndex === 1 ? (
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                <StepField
+                  label={basisLabel}
+                  value={basisValue}
+                  suffix="원"
+                  onChange={(value) =>
+                    dispatch({
+                      type: "updateStoreField",
+                      section: "sales",
+                      field: basisField,
+                      value,
+                    })
+                  }
+                />
+                <StepField
+                  label="객단가"
+                  value={state.store.sales.averageTicket}
+                  suffix="원"
+                  onChange={(value) =>
+                    dispatch({
+                      type: "updateStoreField",
+                      section: "sales",
+                      field: "averageTicket",
+                      value,
+                    })
+                  }
+                />
+                <StepField
+                  label="월세"
+                  value={state.store.fixedCosts.monthlyRent}
+                  suffix="원"
+                  onChange={(value) =>
+                    dispatch({
+                      type: "updateStoreField",
+                      section: "fixedCosts",
+                      field: "monthlyRent",
+                      value,
+                    })
+                  }
+                />
+                <StepField
+                  label="정직원 급여"
+                  value={state.store.labor.salariedPayroll}
+                  suffix="원"
+                  onChange={(value) =>
+                    dispatch({
+                      type: "updateStoreField",
+                      section: "labor",
+                      field: "salariedPayroll",
+                      value,
+                    })
+                  }
+                />
+                <StepField
+                  label="카드 비중"
+                  value={percentFromRatio(state.store.sales.cardRatio)}
+                  suffix="%"
+                  onChange={(value) =>
+                    dispatch({
+                      type: "updateStoreField",
+                      section: "sales",
+                      field: "cardRatio",
+                      value: ratioFromPercentInput(value),
+                    })
+                  }
+                />
+                <StepField
+                  label="포장 비중"
+                  value={percentFromRatio(state.store.sales.takeoutRatio)}
+                  suffix="%"
+                  onChange={(value) =>
+                    dispatch({
+                      type: "updateStoreField",
+                      section: "sales",
+                      field: "takeoutRatio",
+                      value: ratioFromPercentInput(value),
+                    })
+                  }
+                />
+              </div>
+            ) : null}
+
+            {stepIndex === 2 ? (
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                <StepField
+                  label="목표 월 순이익"
+                  value={state.targetMonthlyNetProfit}
+                  suffix="원"
+                  onChange={(value) =>
+                    dispatch({ type: "setTargetMonthlyNetProfit", value })
+                  }
+                />
+                <StepField
+                  label="목표 원재료비율"
+                  value={percentFromRatio(state.targetIngredientRate)}
+                  suffix="%"
+                  onChange={(value) =>
+                    dispatch({
+                      type: "setTargetIngredientRate",
+                      value: ratioFromPercentInput(value),
+                    })
+                  }
+                />
+                <StepField
+                  label="월 영업일수"
+                  value={state.store.sales.operatingDaysPerMonth}
+                  suffix="일"
+                  onChange={(value) =>
+                    dispatch({
+                      type: "updateStoreField",
+                      section: "sales",
+                      field: "operatingDaysPerMonth",
+                      value,
+                    })
+                  }
+                />
+                <StepField
+                  label="일평균 방문객"
+                  value={state.store.sales.visitorsPerDay}
+                  suffix="명"
+                  onChange={(value) =>
+                    dispatch({
+                      type: "updateStoreField",
+                      section: "sales",
+                      field: "visitorsPerDay",
+                      value,
+                    })
+                  }
+                />
+              </div>
+            ) : null}
 
             <div className="mt-8 flex items-center justify-between gap-3">
               <button
@@ -202,44 +338,42 @@ export function OnboardingFlow({
                 onClick={handleNext}
                 className="inline-flex items-center gap-2 rounded-full bg-[#1b4797] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(27,71,151,0.24)]"
               >
-                {isLastStep ? "시작하기" : "다음"}
+                {isLastStep ? "결과 보기" : "다음"}
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </section>
 
-          <aside className="rounded-b-[36px] rounded-r-[36px] bg-[linear-gradient(180deg,#1b4797_0%,#244f9f_100%)] p-6 text-white sm:p-8 lg:rounded-b-none lg:rounded-r-[36px] lg:rounded-l-none">
+          <aside className="bg-[linear-gradient(180deg,#1b4797_0%,#244f9f_100%)] p-6 text-white sm:p-8">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/90">
               <Sparkles className="h-3.5 w-3.5" />
-              빠르게 끝내는 시작 설정
+              Setup First
             </div>
 
-            <h3 className="mt-6 text-xl font-semibold">답은 먼저 보여드리고, 설정은 나중에 만집니다.</h3>
+            <h3 className="mt-6 text-xl font-semibold">먼저 기준을 맞추고, 그 다음 결과를 보겠습니다.</h3>
             <p className="mt-3 text-sm leading-7 text-white/80">
-              설정을 다 채우고 내려가는 방식이 아니라, 시작값만 고른 뒤 바로 결과 화면으로
-              들어가게 바꿨습니다. 이후에는 메뉴별 권장가와 월 순이익을 보면서 필요한 항목만
-              펼쳐서 손보면 됩니다.
+              여기서 핵심 숫자만 맞춘 뒤 넘어가면, 다음 화면에서는 권장가와 손익만 집중해서 볼 수 있습니다.
             </p>
 
             <div className="mt-8 rounded-[28px] border border-white/15 bg-white/10 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                이번 단계에서 정하는 것
+                이번 단계에서 끝내는 것
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-white/85">
-                <li>매출 입력 기준</li>
-                <li>부가세 포함 여부</li>
-                <li>가까운 템플릿</li>
+                {currentStep.helperItems.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
               </ul>
             </div>
 
             <div className="mt-6 rounded-[28px] border border-white/15 bg-white/10 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
-                다음 화면에서 바로 보이는 것
+                결과 화면 흐름
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-white/85">
-                <li>월 순이익, 연 순이익, 목표까지 차이</li>
-                <li>메뉴별 현재가와 30% 기준 권장가</li>
-                <li>원가율이 높은 메뉴와 가장 큰 비용 요인</li>
+                <li>먼저 봐야 할 숫자 요약</li>
+                <li>메뉴별 권장가 요약 리스트</li>
+                <li>선택한 메뉴 상세 설정</li>
               </ul>
             </div>
           </aside>

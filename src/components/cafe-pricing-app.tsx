@@ -18,9 +18,7 @@ import { OnboardingFlow } from "@/components/onboarding-flow";
 import { ResultsDashboard } from "@/components/results-dashboard";
 import { appReducer, createInitialAppState } from "@/lib/app-state";
 import { calculateAppState } from "@/lib/calculations";
-import { TEMPLATES } from "@/lib/constants";
 import { loadStoredScenarios, loadStoredState, saveStoredScenarios, saveStoredState } from "@/lib/storage";
-import { getTemplateById } from "@/lib/seeds";
 import { cn, createId, deepClone } from "@/lib/utils";
 import type { SavedScenario } from "@/lib/types";
 
@@ -81,7 +79,7 @@ export function CafePricingApp() {
   const [selectedScenarioId, setSelectedScenarioId] = useState("");
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("results");
   const [isInputTrayOpen, setIsInputTrayOpen] = useState(false);
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(true);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => !state.wizard.completed);
   const inlineInputTrayRef = useRef<HTMLDivElement | null>(null);
   const skipStatePersist = useRef(true);
   const skipScenarioPersist = useRef(true);
@@ -120,7 +118,6 @@ export function CafePricingApp() {
   }, [isInputTrayOpen]);
 
   const result = useMemo(() => calculateAppState(state), [state]);
-  const activeTemplate = getTemplateById(state.wizard.templateId);
   const effectiveSelectedScenarioId = savedScenarios.some(
     (scenario) => scenario.id === selectedScenarioId,
   )
@@ -131,7 +128,7 @@ export function CafePricingApp() {
   );
 
   const handleSaveScenario = () => {
-    const name = window.prompt("저장할 설정 이름을 입력해 주세요.", activeTemplate.name);
+    const name = window.prompt("저장할 설정 이름을 입력해 주세요.", "내 설정");
     if (!name) {
       return;
     }
@@ -255,7 +252,10 @@ export function CafePricingApp() {
               </button>
               <button
                 type="button"
-                onClick={() => dispatch({ type: "resetState" })}
+                onClick={() => {
+                  dispatch({ type: "resetState" });
+                  setIsOnboardingOpen(true);
+                }}
                 className="inline-flex items-center gap-2 rounded-full bg-[#f3f6fb] px-4 py-2.5 text-sm font-semibold text-[#4f6285]"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -264,7 +264,7 @@ export function CafePricingApp() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_1fr_1.1fr_1.2fr]">
+          <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_1fr_1.45fr]">
             <RailSegment
               label="매출 기준"
               value={state.wizard.salesBasis}
@@ -294,30 +294,6 @@ export function CafePricingApp() {
                 })
               }
             />
-
-            <div className="rounded-[28px] border border-[#d9e3f6] bg-white p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
-                템플릿
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {TEMPLATES.map((template) => (
-                  <button
-                    key={template.id}
-                    type="button"
-                    onClick={() => dispatch({ type: "applyTemplate", templateId: template.id })}
-                    className={cn(
-                      "rounded-full px-3 py-2 text-xs font-semibold transition",
-                      state.wizard.templateId === template.id
-                        ? "bg-[#1b4797] text-white"
-                        : "bg-[#eef3ff] text-[#1b4797] hover:bg-[#dde8ff]",
-                    )}
-                  >
-                    {template.name}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-3 text-xs leading-5 text-[#61728f]">{activeTemplate.description}</p>
-            </div>
 
             <div className="rounded-[28px] border border-[#d9e3f6] bg-white p-3">
               <div className="flex items-center justify-between gap-3">
@@ -414,7 +390,7 @@ export function CafePricingApp() {
 
       {isOnboardingOpen ? (
         <OnboardingFlow
-          wizard={state.wizard}
+          state={state}
           dispatch={dispatch}
           onClose={() => setIsOnboardingOpen(false)}
         />

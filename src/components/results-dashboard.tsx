@@ -1,12 +1,10 @@
-"use client";
+﻿"use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
   Calculator,
-  ChevronDown,
-  ChevronUp,
   Goal,
   PiggyBank,
   Sparkles,
@@ -15,17 +13,10 @@ import {
 
 import { NumericInput } from "@/components/numeric-input";
 import { buildAiInsightRequest, type AiInsightResponse } from "@/lib/ai-insights";
-import { formatCompactCurrency, formatCurrency, formatPercent } from "@/lib/format";
-import { cn, percentFromRatio, ratioFromPercentInput } from "@/lib/utils";
 import type { AppAction } from "@/lib/app-state";
-import type {
-  AppCalculationResult,
-  AppState,
-  IngredientBudgetItem,
-  MenuResult,
-  MenuState,
-  Temperature,
-} from "@/lib/types";
+import { formatCompactCurrency, formatCurrency, formatPercent } from "@/lib/format";
+import type { AppCalculationResult, AppState, MenuResult, MenuState, Temperature } from "@/lib/types";
+import { cn, percentFromRatio, ratioFromPercentInput } from "@/lib/utils";
 
 interface ResultsDashboardProps {
   state: AppState;
@@ -37,155 +28,62 @@ interface ResultsDashboardProps {
   inlineInputTray?: React.ReactNode;
 }
 
-function NumberInput({
-  value,
-  onChange,
-  suffix,
-  className,
-}: {
-  value: number;
-  onChange: (value: number) => void;
-  suffix?: string;
-  className?: string;
-}) {
-  return (
-    <NumericInput
-      value={value}
-      onChange={onChange}
-      suffix={suffix}
-      className={className}
-    />
-  );
+function NumberInput({ value, onChange, suffix, className }: { value: number; onChange: (value: number) => void; suffix?: string; className?: string; }) {
+  return <NumericInput value={value} onChange={onChange} suffix={suffix} className={className} />;
 }
 
-function SummaryChip({
-  label,
-  value,
-  caption,
-  tone = "blue",
-  className,
-  valueClassName,
-}: {
-  label: string;
-  value: string;
-  caption: string;
-  tone?: "blue" | "amber" | "rose" | "emerald";
-  className?: string;
-  valueClassName?: string;
-}) {
-  const toneClass =
-    tone === "amber"
-      ? "border-[#f6dfb2] bg-[#fff8e9]"
-      : tone === "rose"
-        ? "border-[#f4d7dc] bg-[#fff5f6]"
-        : tone === "emerald"
-          ? "border-[#d6ece4] bg-[#f5fbf8]"
-          : "border-[#d9e3f6] bg-white";
-
+function SummaryPill({ label, value, tone = "blue" }: { label: string; value: string; tone?: "blue" | "amber" | "rose" | "emerald"; }) {
+  const toneClass = tone === "amber" ? "border-[#f6dfb2] bg-[#fff8e9]" : tone === "rose" ? "border-[#f4d7dc] bg-[#fff5f6]" : tone === "emerald" ? "border-[#d6ece4] bg-[#f5fbf8]" : "border-[#d9e3f6] bg-white";
   return (
-    <div
-      className={cn(
-        "rounded-[18px] border px-4 py-3 shadow-[0_8px_18px_rgba(27,71,151,0.04)]",
-        toneClass,
-        className,
-      )}
-    >
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6c7fa5]">
-        {label}
-      </p>
-      <p className={cn("mt-2 text-base font-semibold leading-none text-[#13233f]", valueClassName)}>
-        {value}
-      </p>
-      <p className="mt-2 text-xs leading-5 text-[#61728f]">{caption}</p>
+    <div className={cn("rounded-[18px] border px-4 py-3", toneClass)}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-[#13233f]">{value}</p>
     </div>
   );
 }
 
-function SummaryStat({
-  label,
-  value,
-  description,
-  accent,
-}: {
-  label: string;
-  value: string;
-  description: string;
-  accent?: "blue" | "amber" | "rose" | "emerald";
-}) {
-  const accentClass =
-    accent === "amber"
-      ? "border-[#f6dfb2] bg-[#fff8e9]"
-      : accent === "rose"
-        ? "border-[#f4d7dc] bg-[#fff5f6]"
-        : accent === "emerald"
-          ? "border-[#d6ece4] bg-[#f5fbf8]"
-          : "border-[#d9e3f6] bg-white";
-
+function SummaryStat({ label, value, description, accent }: { label: string; value: string; description: string; accent?: "blue" | "amber" | "rose"; }) {
+  const toneClass = accent === "amber" ? "border-[#f6dfb2] bg-[#fff8e9]" : accent === "rose" ? "border-[#f4d7dc] bg-[#fff5f6]" : "border-[#d9e3f6] bg-white";
   return (
-    <article
-      className={cn(
-        "rounded-[24px] border p-4 shadow-[0_10px_24px_rgba(27,71,151,0.05)]",
-        accentClass,
-      )}
-    >
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
-        {label}
-      </p>
+    <article className={cn("rounded-[24px] border p-4", toneClass)}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">{label}</p>
       <p className="mt-3 text-2xl font-semibold text-[#13233f]">{value}</p>
       <p className="mt-2 text-xs leading-5 text-[#61728f]">{description}</p>
     </article>
   );
 }
 
-function MetricBar({
-  label,
-  amount,
-  total,
-  tone,
-}: {
-  label: string;
-  amount: number;
-  total: number;
-  tone: string;
-}) {
+function MetricBar({ label, amount, total, tone }: { label: string; amount: number; total: number; tone: string; }) {
   const ratio = total > 0 ? Math.min(amount / total, 1) : 0;
-
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between text-sm text-[#516281]">
         <span>{label}</span>
         <span className="font-semibold text-[#13233f]">{formatCompactCurrency(amount)}</span>
       </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-[#e6edf9]">
-        <div className={cn("h-full rounded-full", tone)} style={{ width: `${ratio * 100}%` }} />
-      </div>
+      <div className="h-2.5 overflow-hidden rounded-full bg-[#e6edf9]"><div className={cn("h-full rounded-full", tone)} style={{ width: `${ratio * 100}%` }} /></div>
     </div>
   );
 }
 
-function EditablePriceGroup({
-  menu,
-  currentPrices,
-  onChange,
-}: {
-  menu: MenuState;
-  currentPrices: Partial<Record<Temperature, number>>;
-  onChange: (temperature: Temperature, value: number) => void;
-}) {
+function MenuMetric({ label, value, tone = "blue" }: { label: string; value: string; tone?: "blue" | "amber" | "rose" | "emerald"; }) {
+  const toneClass = tone === "amber" ? "bg-[#fff7e5]" : tone === "rose" ? "bg-[#fff5f6]" : tone === "emerald" ? "bg-[#f5fbf8]" : "bg-[#f8fbff]";
+  return (
+    <div className={cn("rounded-2xl p-3", toneClass)}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#7081a2]">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-[#13233f]">{value}</p>
+    </div>
+  );
+}
+
+function EditablePriceGroup({ menu, currentPrices, onChange }: { menu: MenuState; currentPrices: Partial<Record<Temperature, number>>; onChange: (temperature: Temperature, value: number) => void; }) {
   if (menu.temperatureSupport === "both") {
     return (
       <div className="grid gap-2">
         {(["hot", "ice"] as Temperature[]).map((temperature) => (
           <div key={temperature} className="flex items-center gap-2">
-            <span className="w-9 rounded-full bg-[#eef3ff] px-2 py-1 text-[11px] font-semibold text-[#1b4797]">
-              {temperature.toUpperCase()}
-            </span>
-            <NumberInput
-              value={currentPrices[temperature] ?? 0}
-              onChange={(value) => onChange(temperature, value)}
-              suffix="원"
-              className="h-10"
-            />
+            <span className="w-9 rounded-full bg-[#eef3ff] px-2 py-1 text-[11px] font-semibold text-[#1b4797]">{temperature.toUpperCase()}</span>
+            <NumberInput value={currentPrices[temperature] ?? 0} onChange={(value) => onChange(temperature, value)} suffix="원" className="h-10" />
           </div>
         ))}
       </div>
@@ -193,349 +91,38 @@ function EditablePriceGroup({
   }
 
   const temperature = menu.temperatureSupport === "hot" ? "hot" : "ice";
-
-  return (
-    <NumberInput
-      value={currentPrices[temperature] ?? 0}
-      onChange={(value) => onChange(temperature, value)}
-      suffix="원"
-      className="h-10"
-    />
-  );
+  return <NumberInput value={currentPrices[temperature] ?? 0} onChange={(value) => onChange(temperature, value)} suffix="원" className="h-10" />;
 }
 
-function RecommendedPriceList({
-  prices,
-  inverse = false,
-  large = false,
-}: {
-  prices: Partial<Record<Temperature, number>>;
-  inverse?: boolean;
-  large?: boolean;
-}) {
+function RecommendedPriceList({ prices }: { prices: Partial<Record<Temperature, number>> }) {
   return (
-    <div
-      className={cn(
-        "space-y-1 font-semibold",
-        inverse
-          ? large
-            ? "text-xl text-white"
-            : "text-base text-white"
-          : "text-sm text-[#13233f]",
-      )}
-    >
+    <div className="space-y-1 text-xl font-semibold text-white">
       {Object.entries(prices).map(([temperature, price]) => (
-        <div key={temperature}>
-          {temperature.toUpperCase()} {formatCurrency(price)}
-        </div>
+        <div key={temperature}>{temperature.toUpperCase()} {formatCurrency(price)}</div>
       ))}
     </div>
   );
 }
 
-function MenuMetric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "blue" | "amber" | "rose" | "emerald";
-}) {
-  const accentClass =
-    tone === "amber"
-      ? "bg-[#fff7e5]"
-      : tone === "rose"
-        ? "bg-[#fff5f6]"
-        : tone === "emerald"
-          ? "bg-[#f5fbf8]"
-          : "bg-[#f8fbff]";
-
-  return (
-    <div className={cn("rounded-2xl p-3", accentClass)}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#7081a2]">
-        {label}
-      </p>
-      <p className="mt-2 text-sm font-semibold text-[#13233f]">{value}</p>
-    </div>
-  );
+function getMenuStatus(menuResult: MenuResult, targetIngredientRate: number) {
+  if (Math.abs(menuResult.priceGap) >= 1500) return { label: "조정 큼", tone: "rose" as const };
+  if (menuResult.directIngredientRate > targetIngredientRate || menuResult.costRate >= 0.4) return { label: "조정 필요", tone: "amber" as const };
+  return { label: "양호", tone: "emerald" as const };
 }
 
-function IngredientBudgetGuide({
-  items,
-  ingredientLabels,
-}: {
-  items: IngredientBudgetItem[];
-  ingredientLabels: Map<string, string>;
-}) {
-  if (!items.length) {
-    return null;
-  }
-
-  return (
-    <div className="rounded-[24px] border border-[#d9e3f6] bg-[#fbfdff] p-4">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
-          재료 예산 가이드
-        </p>
-        <p className="mt-1 text-sm text-[#61728f]">
-          현재 레시피 비중대로 나눠본 잔당 목표 원재료비입니다.
-        </p>
-      </div>
-
-      <div className="mt-4 space-y-2">
-        {items.slice(0, 6).map((item) => {
-          const tone =
-            item.gap > 0 ? "bg-[#fff3f4] text-[#a04855]" : "bg-[#f3f9f6] text-[#1c7d56]";
-
-          return (
-            <div
-              key={item.itemId}
-              className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 rounded-2xl border border-[#e1e9f8] bg-white px-3 py-3 text-sm"
-            >
-              <span className="font-medium text-[#13233f]">
-                {ingredientLabels.get(item.itemId) ?? item.itemId}
-              </span>
-              <span className="text-[#516281]">현재 {formatCurrency(item.currentCost)}</span>
-              <span className="text-[#516281]">목표 {formatCurrency(item.targetCost)}</span>
-              <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", tone)}>
-                {item.gap > 0 ? "초과 " : "여유 "}
-                {formatCurrency(Math.abs(item.gap))}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function VariantEditor({
-  menu,
-  dispatch,
-  ingredientLabels,
-  packagingLabels,
-}: {
-  menu: MenuState;
-  dispatch: React.Dispatch<AppAction>;
-  ingredientLabels: Map<string, string>;
-  packagingLabels: Map<string, string>;
-}) {
-  return (
-    <div className="grid gap-3 lg:grid-cols-2">
-      {(Object.entries(menu.variants) as [Temperature, MenuState["variants"][Temperature]][]).map(
-        ([temperature, variant]) =>
-          variant ? (
-            <section
-              key={temperature}
-              className="rounded-[26px] border border-[#d9e3f6] bg-[#f8fbff] p-4"
-            >
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-[#13233f]">
-                  {menu.name} {temperature.toUpperCase()}
-                </h4>
-                <label className="flex items-center gap-2 text-xs text-[#61728f]">
-                  <input
-                    type="checkbox"
-                    checked={variant.enabled}
-                    onChange={(event) =>
-                      dispatch({
-                        type: "updateMenuVariantField",
-                        menuId: menu.id,
-                        temperature,
-                        field: "enabled",
-                        value: event.target.checked,
-                      })
-                    }
-                  />
-                  사용
-                </label>
-              </div>
-
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <div>
-                  <p className="mb-1 text-xs font-medium text-[#61728f]">판매가</p>
-                  <NumberInput
-                    value={variant.price}
-                    onChange={(value) =>
-                      dispatch({
-                        type: "updateMenuVariantField",
-                        menuId: menu.id,
-                        temperature,
-                        field: "price",
-                        value,
-                      })
-                    }
-                    suffix="원"
-                  />
-                </div>
-                <div>
-                  <p className="mb-1 text-xs font-medium text-[#61728f]">컵 용량</p>
-                  <NumberInput
-                    value={variant.cupSizeMl}
-                    onChange={(value) =>
-                      dispatch({
-                        type: "updateMenuVariantField",
-                        menuId: menu.id,
-                        temperature,
-                        field: "cupSizeMl",
-                        value,
-                      })
-                    }
-                    suffix="ml"
-                  />
-                </div>
-                <div>
-                  <p className="mb-1 text-xs font-medium text-[#61728f]">샷 수</p>
-                  <NumberInput
-                    value={variant.shotCount}
-                    onChange={(value) =>
-                      dispatch({
-                        type: "updateMenuVariantField",
-                        menuId: menu.id,
-                        temperature,
-                        field: "shotCount",
-                        value,
-                      })
-                    }
-                    suffix="shot"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
-                  재료 구성
-                </p>
-                <div className="mt-2 grid gap-2">
-                  {variant.recipe.map((usage) => (
-                    <label
-                      key={usage.itemId}
-                      className="grid grid-cols-[1fr_110px] items-center gap-3 rounded-2xl border border-[#e0e8f8] bg-white px-3 py-2"
-                    >
-                      <span className="text-sm text-[#13233f]">
-                        {ingredientLabels.get(usage.itemId) ?? usage.itemId}
-                      </span>
-                      <NumberInput
-                        value={usage.amount}
-                        onChange={(value) =>
-                          dispatch({
-                            type: "updateMenuUsage",
-                            menuId: menu.id,
-                            temperature,
-                            usageKind: "recipe",
-                            itemId: usage.itemId,
-                            value,
-                          })
-                        }
-                        suffix="unit"
-                        className="h-9"
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
-                  포장 구성
-                </p>
-                <div className="mt-2 grid gap-2">
-                  {variant.packaging.map((usage) => (
-                    <label
-                      key={usage.itemId}
-                      className="grid grid-cols-[1fr_110px] items-center gap-3 rounded-2xl border border-[#e0e8f8] bg-white px-3 py-2"
-                    >
-                      <span className="text-sm text-[#13233f]">
-                        {packagingLabels.get(usage.itemId) ?? usage.itemId}
-                      </span>
-                      <NumberInput
-                        value={usage.quantity}
-                        onChange={(value) =>
-                          dispatch({
-                            type: "updateMenuUsage",
-                            menuId: menu.id,
-                            temperature,
-                            usageKind: "packaging",
-                            itemId: usage.itemId,
-                            value,
-                          })
-                        }
-                        suffix="ea"
-                        className="h-9"
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </section>
-          ) : null,
-      )}
-    </div>
-  );
-}
-
-function buildInsights({
-  result,
-  highestRawRateMenu,
-  largestIngredientGapMenu,
-  strongestMarginMenu,
-}: {
-  result: AppCalculationResult;
-  highestRawRateMenu?: MenuResult;
-  largestIngredientGapMenu?: MenuResult;
-  strongestMarginMenu?: MenuResult;
-}) {
+function buildInsights({ result, highestRawRateMenu, largestIngredientGapMenu, strongestMarginMenu }: { result: AppCalculationResult; highestRawRateMenu?: MenuResult; largestIngredientGapMenu?: MenuResult; strongestMarginMenu?: MenuResult; }) {
   const insights: string[] = [];
   const biggestDriver = result.topCostDrivers[0];
-
-  if (highestRawRateMenu) {
-    insights.push(
-      `${highestRawRateMenu.name}의 원재료비율이 ${formatPercent(
-        highestRawRateMenu.directIngredientRate,
-      )}로 가장 높습니다. 30% 기준 권장가 ${formatCurrency(
-        highestRawRateMenu.ingredientRecommendedAveragePrice,
-      )}부터 먼저 확인하는 편이 좋습니다.`,
-    );
-  }
-
-  if (largestIngredientGapMenu && largestIngredientGapMenu.ingredientBudgetGap > 0) {
-    insights.push(
-      `${largestIngredientGapMenu.name}는 잔당 원재료비가 목표보다 ${formatCurrency(
-        largestIngredientGapMenu.ingredientBudgetGap,
-      )} 높습니다. 가격 인상이나 핵심 재료 단가 조정 여지가 큽니다.`,
-    );
-  }
-
-  if (biggestDriver) {
-    insights.push(
-      `${biggestDriver.label}이 월 ${formatCompactCurrency(
-        biggestDriver.amount,
-      )} 수준으로 가장 크게 이익을 깎고 있습니다. 이 항목부터 점검하면 체감 개선이 빠릅니다.`,
-    );
-  }
-
-  if (strongestMarginMenu) {
-    insights.push(
-      `${strongestMarginMenu.name}는 월 ${formatCompactCurrency(
-        strongestMarginMenu.monthlyContribution,
-      )}를 벌어주는 핵심 메뉴입니다. 이 메뉴 비중을 조금만 키워도 전체 이익이 빨리 올라갑니다.`,
-    );
-  }
-
+  if (highestRawRateMenu) insights.push(`${highestRawRateMenu.name}의 원재료비율이 ${formatPercent(highestRawRateMenu.directIngredientRate)}로 가장 높습니다. 권장가부터 먼저 확인하는 편이 좋습니다.`);
+  if (largestIngredientGapMenu && largestIngredientGapMenu.ingredientBudgetGap > 0) insights.push(`${largestIngredientGapMenu.name}는 목표 원재료비보다 ${formatCurrency(largestIngredientGapMenu.ingredientBudgetGap)} 초과되어 있습니다.`);
+  if (biggestDriver) insights.push(`${biggestDriver.label}가 월 ${formatCompactCurrency(biggestDriver.amount)} 수준으로 가장 큰 비용입니다.`);
+  if (strongestMarginMenu) insights.push(`${strongestMarginMenu.name}가 월 ${formatCompactCurrency(strongestMarginMenu.monthlyContribution)}의 공헌이익을 내는 핵심 메뉴입니다.`);
   return insights.slice(0, 3);
 }
 
-export function ResultsDashboard({
-  state,
-  result,
-  dispatch,
-  isInputTrayOpen,
-  onOpenInputTray,
-  onToggleInputTray,
-  inlineInputTray,
-}: ResultsDashboardProps) {
-  const [expandedMenuId, setExpandedMenuId] = useState<string | null>(null);
+export function ResultsDashboard({ state, result, dispatch, isInputTrayOpen, onOpenInputTray, onToggleInputTray, inlineInputTray }: ResultsDashboardProps) {
+  const [selectedMenuId, setSelectedMenuId] = useState<string | null>(null);
+  const [showSelectedSettings, setShowSelectedSettings] = useState(false);
   const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [aiInsights, setAiInsights] = useState<string[]>([]);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
@@ -543,107 +130,56 @@ export function ResultsDashboard({
   const [lastAiRequestKey, setLastAiRequestKey] = useState<string | null>(null);
   const store = state.store;
   const calculation = result.result;
-  const ingredientLabels = useMemo(
-    () => new Map(state.priceCatalog.ingredients.map((item) => [item.id, item.label])),
-    [state.priceCatalog.ingredients],
-  );
-  const packagingLabels = useMemo(
-    () => new Map(state.priceCatalog.packaging.map((item) => [item.id, item.label])),
-    [state.priceCatalog.packaging],
-  );
-
-  const averageIngredientRate =
-    calculation.monthlySalesGross > 0
-      ? calculation.monthlyDirectCost / calculation.monthlySalesGross
-      : 0;
-  const averageEffectiveCostRate =
-    calculation.monthlySalesSupply > 0
-      ? (calculation.monthlyDirectCost +
-          calculation.monthlyPackagingCost +
-          calculation.monthlyVariableCost +
-          calculation.monthlyLossCost) /
-        calculation.monthlySalesSupply
-      : 0;
-  const costBase =
-    calculation.monthlyDirectCost +
-    calculation.monthlyPackagingCost +
-    calculation.monthlyVariableCost +
-    calculation.monthlyLossCost +
-    calculation.monthlyLaborCost +
-    calculation.monthlyFixedCost;
-  const highestRawRateMenu = calculation.menuResults
-    .slice()
-    .sort((left, right) => right.directIngredientRate - left.directIngredientRate)[0];
-  const highestEffectiveCostMenu = calculation.menuResults
-    .slice()
-    .sort((left, right) => right.costRate - left.costRate)[0];
-  const strongestMarginMenu = calculation.menuResults
-    .slice()
-    .sort((left, right) => right.monthlyContribution - left.monthlyContribution)[0];
-  const largestIngredientGapMenu = calculation.menuResults
-    .slice()
-    .sort((left, right) => right.ingredientBudgetGap - left.ingredientBudgetGap)[0];
-  const hottestGapMenu = calculation.menuResults
-    .slice()
-    .sort((left, right) => Math.abs(right.priceGap) - Math.abs(left.priceGap))[0];
-  const insights = buildInsights({
-    result,
-    highestRawRateMenu,
-    largestIngredientGapMenu,
-    strongestMarginMenu,
-  });
+  const averageIngredientRate = calculation.monthlySalesGross > 0 ? calculation.monthlyDirectCost / calculation.monthlySalesGross : 0;
+  const averageEffectiveCostRate = calculation.monthlySalesSupply > 0 ? (calculation.monthlyDirectCost + calculation.monthlyPackagingCost + calculation.monthlyVariableCost + calculation.monthlyLossCost) / calculation.monthlySalesSupply : 0;
+  const costBase = calculation.monthlyDirectCost + calculation.monthlyPackagingCost + calculation.monthlyVariableCost + calculation.monthlyLossCost + calculation.monthlyLaborCost + calculation.monthlyFixedCost;
+  const highestRawRateMenu = calculation.menuResults.slice().sort((a, b) => b.directIngredientRate - a.directIngredientRate)[0];
+  const highestEffectiveCostMenu = calculation.menuResults.slice().sort((a, b) => b.costRate - a.costRate)[0];
+  const strongestMarginMenu = calculation.menuResults.slice().sort((a, b) => b.monthlyContribution - a.monthlyContribution)[0];
+  const largestIngredientGapMenu = calculation.menuResults.slice().sort((a, b) => b.ingredientBudgetGap - a.ingredientBudgetGap)[0];
+  const hottestGapMenu = calculation.menuResults.slice().sort((a, b) => Math.abs(b.priceGap) - Math.abs(a.priceGap))[0];
+  const sortedMenus = useMemo(() => calculation.menuResults.slice().sort((a, b) => Math.abs(b.priceGap) - Math.abs(a.priceGap)), [calculation.menuResults]);
   const aiRequest = useMemo(() => buildAiInsightRequest(state, result), [state, result]);
   const aiRequestKey = useMemo(() => JSON.stringify(aiRequest), [aiRequest]);
   const isAiStale = Boolean(lastAiRequestKey && lastAiRequestKey !== aiRequestKey);
-  const displayedInsights = aiInsights.length > 0 ? aiInsights : insights;
+  const displayedInsights = aiInsights.length > 0 ? aiInsights : buildInsights({ result, highestRawRateMenu, largestIngredientGapMenu, strongestMarginMenu });
 
-  const basisValue =
-    state.wizard.salesBasis === "monthly" ? store.sales.monthlySales : store.sales.annualSales;
+  const defaultSelectedMenuId = hottestGapMenu?.menuId ?? sortedMenus[0]?.menuId ?? null;
+  const activeSelectedMenuId =
+    selectedMenuId && sortedMenus.some((menu) => menu.menuId === selectedMenuId)
+      ? selectedMenuId
+      : defaultSelectedMenuId;
+  const selectedMenuResult =
+    sortedMenus.find((menu) => menu.menuId === activeSelectedMenuId) ?? sortedMenus[0] ?? null;
+  const selectedMenu = store.menus.find((item) => item.id === selectedMenuResult?.menuId) ?? null;
+  const priorityCards = [
+    hottestGapMenu ? { key: "gap", label: "가격 차이 가장 큼", name: hottestGapMenu.name, value: `${hottestGapMenu.priceGap >= 0 ? "+" : ""}${formatCurrency(hottestGapMenu.priceGap)}`, tone: "blue" as const, menuId: hottestGapMenu.menuId } : null,
+    highestRawRateMenu ? { key: "ingredient", label: "원재료비율 가장 높음", name: highestRawRateMenu.name, value: formatPercent(highestRawRateMenu.directIngredientRate), tone: "amber" as const, menuId: highestRawRateMenu.menuId } : null,
+    highestEffectiveCostMenu ? { key: "effective", label: "운영 원가 가장 무거움", name: highestEffectiveCostMenu.name, value: formatPercent(highestEffectiveCostMenu.costRate), tone: "rose" as const, menuId: highestEffectiveCostMenu.menuId } : null,
+  ].filter(Boolean) as Array<{ key: string; label: string; name: string; value: string; tone: "blue" | "amber" | "rose"; menuId: string }>;
 
   async function handleRunAiInsights() {
     setAiStatus("loading");
     setAiMessage(null);
-
     try {
-      const response = await fetch("/api/ai-insights", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: aiRequestKey,
-      });
-
+      const response = await fetch("/api/ai-insights", { method: "POST", headers: { "Content-Type": "application/json" }, body: aiRequestKey });
       const payload = (await response.json()) as AiInsightResponse | { error?: string };
-
       if (!response.ok) {
-        const nextMessage =
-          "message" in payload && typeof payload.message === "string"
-            ? payload.message
-            : "error" in payload && typeof payload.error === "string"
-              ? payload.error
-              : "AI 분석을 불러오지 못했습니다.";
-
+        const nextMessage = "message" in payload && typeof payload.message === "string" ? payload.message : "error" in payload && typeof payload.error === "string" ? payload.error : "AI 분석을 불러오지 못했습니다.";
         setAiStatus("error");
         setAiMessage(nextMessage);
         return;
       }
-
       if (!("insights" in payload) || !Array.isArray(payload.insights)) {
         setAiStatus("error");
         setAiMessage("AI 분석 응답 형식이 올바르지 않습니다.");
         return;
       }
-
       setAiInsights(payload.insights);
       setAiModel(payload.model ?? null);
       setLastAiRequestKey(aiRequestKey);
       setAiStatus("ready");
-      setAiMessage(
-        payload.message ??
-          (payload.source === "ai"
-            ? "현재 수치 기준으로 GPT 분석을 다시 읽어왔습니다."
-            : "기본 규칙 분석을 사용 중입니다."),
-      );
+      setAiMessage(payload.source === "ai" ? "AI 분석을 다시 읽어왔습니다." : "기본 분석을 보여주고 있습니다.");
     } catch {
       setAiStatus("error");
       setAiMessage("AI 분석 요청 중 네트워크 오류가 발생했습니다.");
@@ -655,435 +191,149 @@ export function ResultsDashboard({
       <section className="sticky top-3 z-20 rounded-[20px] border border-[#d9e3f6] bg-white/96 px-3 py-3 shadow-[0_10px_22px_rgba(27,71,151,0.08)] backdrop-blur">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
-              Summary
-            </p>
-            <h2 className="mt-1 text-base font-semibold text-[#13233f]">요약</h2>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">Summary</p>
+            <h2 className="mt-1 text-base font-semibold text-[#13233f]">먼저 볼 숫자</h2>
           </div>
-
           <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[420px]">
             <div className="rounded-[18px] border border-[#d9e3f6] bg-[#f8fbff] px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
-                목표 월 순이익
-              </p>
-              <NumberInput
-                value={state.targetMonthlyNetProfit}
-                onChange={(value) => dispatch({ type: "setTargetMonthlyNetProfit", value })}
-                suffix="원"
-                className="mt-2 h-10"
-              />
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">목표 월 순이익</p>
+              <NumberInput value={state.targetMonthlyNetProfit} onChange={(value) => dispatch({ type: "setTargetMonthlyNetProfit", value })} suffix="원" className="mt-2 h-10" />
             </div>
             <div className="rounded-[18px] border border-[#d9e3f6] bg-[#f8fbff] px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
-                목표 원재료비율
-              </p>
-              <NumberInput
-                value={percentFromRatio(state.targetIngredientRate)}
-                onChange={(value) =>
-                  dispatch({
-                    type: "setTargetIngredientRate",
-                    value: ratioFromPercentInput(value),
-                  })
-                }
-                suffix="%"
-                className="mt-2 h-10"
-              />
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">목표 원재료비율</p>
+              <NumberInput value={percentFromRatio(state.targetIngredientRate)} onChange={(value) => dispatch({ type: "setTargetIngredientRate", value: ratioFromPercentInput(value) })} suffix="%" className="mt-2 h-10" />
             </div>
           </div>
         </div>
-
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
-          <SummaryChip
-            label="현재 월 순이익"
-            value={formatCompactCurrency(result.totals.monthlyNetProfit)}
-            caption="현재 판매가와 입력 비용을 그대로 반영한 결과입니다."
-            tone={result.totals.monthlyNetProfit >= 0 ? "blue" : "rose"}
-            className="xl:col-span-2"
-            valueClassName="text-2xl"
-          />
-          <SummaryChip
-            label="목표 달성 객단가"
-            value={formatCompactCurrency(calculation.requiredAverageTicket)}
-            caption="목표 월 순이익을 맞추려면 평균적으로 필요한 객단가입니다."
-            tone="amber"
-          />
-          <SummaryChip
-            label="현재 원재료비율"
-            value={formatPercent(averageIngredientRate)}
-            caption="직접 원재료만 반영한 비율입니다."
-            tone={
-              averageIngredientRate > state.targetIngredientRate + 0.02
-                ? "rose"
-                : averageIngredientRate > state.targetIngredientRate
-                  ? "amber"
-                  : "emerald"
-            }
-          />
-          <SummaryChip
-            label="운영 반영 원가율"
-            value={formatPercent(averageEffectiveCostRate)}
-            caption="포장재, 수수료, 로스까지 포함한 비율입니다."
-            tone={
-              averageEffectiveCostRate >= 0.45
-                ? "rose"
-                : averageEffectiveCostRate >= 0.35
-                  ? "amber"
-                  : "emerald"
-            }
-          />
-          <SummaryChip
-            label="현재 기준 연 순이익"
-            value={formatCompactCurrency(result.totals.annualNetProfit)}
-            caption="지금 설정을 12개월 유지했을 때의 예상치입니다."
-          />
-        </div>
-      </section>
-
-      <section className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_48px_rgba(27,71,151,0.08)]">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
-              Quick Setup
-            </p>
-            <h3 className="mt-2 text-xl font-semibold text-[#13233f]">빠른 입력</h3>
-            <p className="mt-2 text-sm leading-6 text-[#61728f]">
-              처음에는 매출, 객단가, 월세 정도만 먼저 맞추고 권장가 변화를 보는 편이 빠릅니다.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onToggleInputTray}
-            className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]"
-          >
-            <Sparkles className="h-4 w-4" />
-            {isInputTrayOpen ? "상세 설정 접기" : "상세 설정 열기"}
-          </button>
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <div>
-            <p className="mb-1 text-xs font-medium text-[#61728f]">
-              {state.wizard.salesBasis === "monthly" ? "월매출" : "연매출"}
-            </p>
-            <NumberInput
-              value={basisValue}
-              onChange={(value) =>
-                dispatch({
-                  type: "updateStoreField",
-                  section: "sales",
-                  field: state.wizard.salesBasis === "monthly" ? "monthlySales" : "annualSales",
-                  value,
-                })
-              }
-              suffix="원"
-            />
-          </div>
-          <div>
-            <p className="mb-1 text-xs font-medium text-[#61728f]">객단가</p>
-            <NumberInput
-              value={store.sales.averageTicket}
-              onChange={(value) =>
-                dispatch({
-                  type: "updateStoreField",
-                  section: "sales",
-                  field: "averageTicket",
-                  value,
-                })
-              }
-              suffix="원"
-            />
-          </div>
-          <div>
-            <p className="mb-1 text-xs font-medium text-[#61728f]">월세</p>
-            <NumberInput
-              value={store.fixedCosts.monthlyRent}
-              onChange={(value) =>
-                dispatch({
-                  type: "updateStoreField",
-                  section: "fixedCosts",
-                  field: "monthlyRent",
-                  value,
-                })
-              }
-              suffix="원"
-            />
-          </div>
-          <div>
-            <p className="mb-1 text-xs font-medium text-[#61728f]">정직원 급여</p>
-            <NumberInput
-              value={store.labor.salariedPayroll}
-              onChange={(value) =>
-                dispatch({
-                  type: "updateStoreField",
-                  section: "labor",
-                  field: "salariedPayroll",
-                  value,
-                })
-              }
-              suffix="원"
-            />
-          </div>
-          <div>
-            <p className="mb-1 text-xs font-medium text-[#61728f]">카드 비중</p>
-            <NumberInput
-              value={percentFromRatio(store.sales.cardRatio)}
-              onChange={(value) =>
-                dispatch({
-                  type: "updateStoreField",
-                  section: "sales",
-                  field: "cardRatio",
-                  value: ratioFromPercentInput(value),
-                })
-              }
-              suffix="%"
-            />
-          </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <SummaryPill label="월 순이익" value={formatCompactCurrency(result.totals.monthlyNetProfit)} tone={result.totals.monthlyNetProfit >= 0 ? "blue" : "rose"} />
+          <SummaryPill label="권장 객단가" value={formatCompactCurrency(calculation.requiredAverageTicket)} tone="amber" />
+          <SummaryPill label="원재료비율" value={formatPercent(averageIngredientRate)} tone={averageIngredientRate > state.targetIngredientRate ? "amber" : "emerald"} />
+          <SummaryPill label="운영 원가율" value={formatPercent(averageEffectiveCostRate)} tone={averageEffectiveCostRate >= 0.45 ? "rose" : averageEffectiveCostRate >= 0.35 ? "amber" : "emerald"} />
+          <SummaryPill label="연 순이익" value={formatCompactCurrency(result.totals.annualNetProfit)} />
         </div>
       </section>
 
       {inlineInputTray ? <div className="hidden xl:block">{inlineInputTray}</div> : null}
+
+      <section className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_48px_rgba(27,71,151,0.08)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">Menu Focus</p>
+            <h3 className="mt-2 text-xl font-semibold text-[#13233f]">먼저 손볼 메뉴</h3>
+            <p className="mt-2 text-sm leading-6 text-[#61728f]">모든 메뉴를 한 번에 보지 말고, 우선순위 높은 메뉴부터 확인하세요.</p>
+          </div>
+          <button type="button" onClick={onToggleInputTray} className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]">
+            <Sparkles className="h-4 w-4" />
+            {isInputTrayOpen ? "상세 설정 닫기" : "상세 설정 열기"}
+          </button>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {priorityCards.map((card) => (
+            <button key={card.key} type="button" onClick={() => { setSelectedMenuId(card.menuId); setShowSelectedSettings(false); }} className={cn("rounded-[24px] border px-4 py-4 text-left transition", card.tone === "amber" ? "border-[#f6dfb2] bg-[#fff8e9]" : card.tone === "rose" ? "border-[#f4d7dc] bg-[#fff5f6]" : "border-[#d9e3f6] bg-[#f8fbff]")}>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">{card.label}</p>
+              <p className="mt-3 text-xl font-semibold text-[#13233f]">{card.name}</p>
+              <p className="mt-2 text-sm font-medium text-[#425673]">{card.value}</p>
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_48px_rgba(27,71,151,0.08)]">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
-              Menu Pricing
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">Menu Pricing</p>
             <h3 className="mt-2 text-xl font-semibold text-[#13233f]">메뉴별 권장가</h3>
-            <p className="mt-2 text-sm leading-6 text-[#61728f]">
-              현재 판매가와 30% 기준가, 목표 순익 기준가를 한 카드 안에서 바로 비교합니다.
-            </p>
+            <p className="mt-2 text-sm leading-6 text-[#61728f]">왼쪽에서 메뉴를 고르고, 오른쪽에서 선택한 메뉴만 깊게 봅니다.</p>
           </div>
-
           <div className="flex flex-wrap gap-2 text-xs font-semibold text-[#1b4797]">
-            <span className="rounded-full bg-[#eef3ff] px-4 py-2">
-              판매 비중 합계 {store.menus.reduce((sum, menu) => sum + menu.share, 0).toFixed(1)}%
-            </span>
-            {hottestGapMenu ? (
-              <span className="rounded-full bg-[#eef3ff] px-4 py-2">
-                가장 차이 큰 메뉴 {hottestGapMenu.name}
-              </span>
-            ) : null}
+            <span className="rounded-full bg-[#eef3ff] px-4 py-2">차이 큰 순으로 정렬</span>
+            <span className="rounded-full bg-[#eef3ff] px-4 py-2">메뉴 {sortedMenus.length}개</span>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 xl:grid-cols-2">
-          {calculation.menuResults.map((menuResult) => {
-            const menu = store.menus.find((item) => item.id === menuResult.menuId);
-            if (!menu) {
-              return null;
-            }
+        <div className="mt-5 grid gap-5 xl:grid-cols-[0.82fr_1.18fr]">
+          <div className="rounded-[28px] border border-[#d9e3f6] bg-[#fbfdff] p-3">
+            <div className="space-y-2">
+              {sortedMenus.map((menuResult) => {
+                const status = getMenuStatus(menuResult, state.targetIngredientRate);
+                const active = menuResult.menuId === selectedMenuResult?.menuId;
+                return (
+                  <button key={menuResult.menuId} type="button" onClick={() => { setSelectedMenuId(menuResult.menuId); setShowSelectedSettings(false); }} className={cn("flex w-full items-center justify-between gap-3 rounded-[22px] border px-4 py-4 text-left transition", active ? "border-[#1b4797] bg-[#eef3ff] shadow-[0_14px_26px_rgba(27,71,151,0.10)]" : "border-[#e3ebf9] bg-white hover:border-[#a9bfe8] hover:bg-[#f8fbff]")}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-base font-semibold text-[#13233f]">{menuResult.name}</p>
+                        <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-semibold", status.tone === "rose" ? "bg-[#ffe5e8] text-[#a33f4c]" : status.tone === "amber" ? "bg-[#fff0cf] text-[#a87106]" : "bg-[#e7f6ef] text-[#1f7a56]")}>{status.label}</span>
+                      </div>
+                      <p className="mt-2 text-sm text-[#61728f]">현재 {formatCurrency(menuResult.currentAveragePrice)} · 권장 {formatCurrency(menuResult.recommendedAveragePrice)}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-lg font-semibold text-[#13233f]">{menuResult.priceGap >= 0 ? "+" : ""}{formatCurrency(menuResult.priceGap)}</p>
+                      <p className="mt-1 text-xs text-[#61728f]">현재가 대비</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-            const expanded = expandedMenuId === menu.id;
-            const rawRateTone =
-              menuResult.directIngredientRate > state.targetIngredientRate + 0.02
-                ? "rose"
-                : menuResult.directIngredientRate > state.targetIngredientRate
-                  ? "amber"
-                  : "emerald";
-            const effectiveTone =
-              menuResult.costRate >= 0.45
-                ? "rose"
-                : menuResult.costRate >= 0.35
-                  ? "amber"
-                  : "emerald";
+          {selectedMenu && selectedMenuResult ? (
+            <section className="rounded-[28px] border border-[#d9e3f6] bg-[#fbfdff] p-5 shadow-[0_12px_30px_rgba(27,71,151,0.05)]">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-2xl font-semibold text-[#13233f]">{selectedMenuResult.name}</h4>
+                    <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-xs font-semibold text-[#1b4797]">비중 {selectedMenu.share.toFixed(1)}%</span>
+                  </div>
+                  <p className="mt-2 text-sm text-[#61728f]">{selectedMenuResult.temperatureSupport === "both" ? "HOT / ICE 모두 판매" : `${selectedMenuResult.temperatureSupport.toUpperCase()} 전용 메뉴`}</p>
+                </div>
+                <button type="button" onClick={() => setShowSelectedSettings((current) => !current)} className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]">
+                  {showSelectedSettings ? "세부 수치 닫기" : "세부 수치 열기"}
+                </button>
+              </div>
 
-            return (
-              <Fragment key={menu.id}>
-                <article className="rounded-[28px] border border-[#d9e3f6] bg-[#fbfdff] p-5 shadow-[0_12px_30px_rgba(27,71,151,0.05)]">
+              <div className="mt-5 grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
+                <div className="rounded-[24px] border border-[#e0e8f8] bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">현재 판매가</p>
+                  <div className="mt-3"><EditablePriceGroup menu={selectedMenu} currentPrices={selectedMenuResult.currentPrices} onChange={(temperature, value) => dispatch({ type: "updateMenuVariantField", menuId: selectedMenu.id, temperature, field: "price", value })} /></div>
+                </div>
+
+                <div className="rounded-[24px] border border-[#2955a4] bg-[linear-gradient(135deg,#1b4797_0%,#2f62b5_100%)] p-5 text-white shadow-[0_16px_34px_rgba(27,71,151,0.20)]">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-lg font-semibold text-[#13233f]">{menuResult.name}</h4>
-                        <span className="rounded-full bg-[#eef3ff] px-3 py-1 text-[11px] font-semibold text-[#1b4797]">
-                          비중 {menu.share.toFixed(1)}%
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-[#61728f]">
-                        {menuResult.temperatureSupport === "both"
-                          ? "HOT / ICE 모두 판매"
-                          : `${menuResult.temperatureSupport.toUpperCase()} 전용 메뉴`}
-                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/72">최종 권장 판매가</p>
+                      <p className="mt-1 text-sm text-white/80">30% 기준과 목표 순익 기준 중 더 높은 값을 씁니다.</p>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setExpandedMenuId(expanded ? null : menu.id)}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-3 py-2 text-xs font-semibold text-[#1b4797]"
-                    >
-                      {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      {expanded ? "상세 닫기" : "상세 설정"}
-                    </button>
+                    <span className="rounded-full bg-white/14 px-3 py-1 text-[11px] font-semibold">기준 {percentFromRatio(state.targetIngredientRate)}%</span>
                   </div>
-
-                  <div className="mt-5 grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
-                    <div className="rounded-[24px] border border-[#e0e8f8] bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
-                        현재 판매가
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-[#61728f]">
-                        실제로 받고 있는 가격입니다. 여기 값을 바꾸면 아래 손익이 바로 다시 계산됩니다.
-                      </p>
-                      <div className="mt-3">
-                        <EditablePriceGroup
-                          menu={menu}
-                          currentPrices={menuResult.currentPrices}
-                          onChange={(temperature, value) =>
-                            dispatch({
-                              type: "updateMenuVariantField",
-                              menuId: menu.id,
-                              temperature,
-                              field: "price",
-                              value,
-                            })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-[24px] border border-[#2955a4] bg-[linear-gradient(135deg,#1b4797_0%,#2f62b5_100%)] p-5 text-white shadow-[0_16px_34px_rgba(27,71,151,0.20)]">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/72">
-                            최종 권장 판매가
-                          </p>
-                          <p className="mt-1 text-xs text-white/70">
-                            30% 기준가와 목표 순익 기준가 중 더 높은 값을 권장가로 씁니다.
-                          </p>
-                        </div>
-                        <span className="rounded-full bg-white/14 px-3 py-1 text-[11px] font-semibold">
-                          기준 {percentFromRatio(state.targetIngredientRate)}%
-                        </span>
-                      </div>
-
-                      <div className="mt-4">
-                        <RecommendedPriceList prices={menuResult.recommendedPrices} inverse large />
-                      </div>
-
-                      <div className="mt-4 grid gap-2 rounded-[18px] bg-white/10 p-3 text-xs">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-white/72">현재 평균가</span>
-                          <span className="font-semibold text-white">
-                            {formatCurrency(menuResult.currentAveragePrice)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-white/72">원재료비 기준</span>
-                          <span className="font-semibold text-white">
-                            {formatCurrency(menuResult.ingredientRecommendedAveragePrice)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-white/72">목표 순익 기준</span>
-                          <span className="font-semibold text-white">
-                            {formatCurrency(menuResult.goalRecommendedAveragePrice)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold",
-                            menuResult.priceGap >= 0 ? "bg-white/16 text-white" : "bg-white text-[#1b4797]",
-                          )}
-                        >
-                          {menuResult.priceGap >= 0 ? (
-                            <ArrowUpCircle className="h-3.5 w-3.5" />
-                          ) : (
-                            <ArrowDownCircle className="h-3.5 w-3.5" />
-                          )}
-                          현재가보다 {menuResult.priceGap >= 0 ? "+" : ""}
-                          {formatCurrency(menuResult.priceGap)}
-                        </span>
-                        <p className="mt-2 text-xs text-white/72">
-                          왜 이 가격인지: 현재가, 원재료 30% 기준, 목표 월 순익 기준을 함께 비교한 결과입니다.
-                        </p>
-                      </div>
-                    </div>
+                  <div className="mt-5"><RecommendedPriceList prices={selectedMenuResult.recommendedPrices} /></div>
+                  <div className="mt-4">
+                    <span className={cn("inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold", selectedMenuResult.priceGap >= 0 ? "bg-white/16 text-white" : "bg-white text-[#1b4797]")}>
+                      {selectedMenuResult.priceGap >= 0 ? <ArrowUpCircle className="h-3.5 w-3.5" /> : <ArrowDownCircle className="h-3.5 w-3.5" />}
+                      현재가보다 {selectedMenuResult.priceGap >= 0 ? "+" : ""}{formatCurrency(selectedMenuResult.priceGap)}
+                    </span>
                   </div>
+                </div>
+              </div>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                    <MenuMetric label="현재 잔당 원재료비" value={formatCurrency(menuResult.directCost)} tone="blue" />
-                    <MenuMetric label="30% 기준 허용 원재료비" value={formatCurrency(menuResult.targetIngredientBudget)} tone="amber" />
-                    <MenuMetric label="현재 원재료비율" value={formatPercent(menuResult.directIngredientRate)} tone={rawRateTone} />
-                    <MenuMetric label="운영 반영 원가율" value={formatPercent(menuResult.costRate)} tone={effectiveTone} />
-                    <MenuMetric label="잔당 공헌이익" value={formatCurrency(menuResult.contributionMargin)} tone="emerald" />
-                  </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <MenuMetric label="현재 원재료비" value={formatCurrency(selectedMenuResult.directCost)} tone="blue" />
+                <MenuMetric label="30% 허용 원재료비" value={formatCurrency(selectedMenuResult.targetIngredientBudget)} tone="amber" />
+                <MenuMetric label="현재 원재료비율" value={formatPercent(selectedMenuResult.directIngredientRate)} tone={selectedMenuResult.directIngredientRate > state.targetIngredientRate ? "amber" : "emerald"} />
+                <MenuMetric label="운영 원가율" value={formatPercent(selectedMenuResult.costRate)} tone={selectedMenuResult.costRate >= 0.45 ? "rose" : "amber"} />
+                <MenuMetric label="잔당 공헌이익" value={formatCurrency(selectedMenuResult.contributionMargin)} tone="emerald" />
+              </div>
 
-                  {expanded ? (
-                    <div className="mt-4 space-y-4 rounded-[24px] border border-[#d9e3f6] bg-white p-4">
-                      <div className="grid gap-3 md:grid-cols-4">
-                        <MenuMetric label="월 기여이익" value={formatCompactCurrency(menuResult.monthlyContribution)} tone="blue" />
-                        <MenuMetric
-                          label="원재료비 초과"
-                          value={formatCurrency(Math.abs(menuResult.ingredientBudgetGap))}
-                          tone={menuResult.ingredientBudgetGap > 0 ? "rose" : "emerald"}
-                        />
-                        <MenuMetric
-                          label="30% 기준 적정가"
-                          value={formatCurrency(menuResult.ingredientRecommendedAveragePrice)}
-                          tone="amber"
-                        />
-                        <MenuMetric
-                          label="목표 순익 기준가"
-                          value={formatCurrency(menuResult.goalRecommendedAveragePrice)}
-                          tone="blue"
-                        />
-                      </div>
-
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <p className="mb-1 text-xs font-medium text-[#61728f]">판매 비중</p>
-                          <NumberInput
-                            value={menu.share}
-                            onChange={(value) =>
-                              dispatch({
-                                type: "updateMenuField",
-                                menuId: menu.id,
-                                field: "share",
-                                value,
-                              })
-                            }
-                            suffix="%"
-                          />
-                        </div>
-                        {menu.temperatureSupport === "both" ? (
-                          <div>
-                            <p className="mb-1 text-xs font-medium text-[#61728f]">HOT 비중</p>
-                            <NumberInput
-                              value={percentFromRatio(menu.hotShare)}
-                              onChange={(value) =>
-                                dispatch({
-                                  type: "updateMenuField",
-                                  menuId: menu.id,
-                                  field: "hotShare",
-                                  value: ratioFromPercentInput(value),
-                                })
-                              }
-                              suffix="%"
-                            />
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <IngredientBudgetGuide
-                        items={menuResult.ingredientBudgetItems}
-                        ingredientLabels={ingredientLabels}
-                      />
-
-                      <VariantEditor
-                        menu={menu}
-                        dispatch={dispatch}
-                        ingredientLabels={ingredientLabels}
-                        packagingLabels={packagingLabels}
-                      />
-                    </div>
-                  ) : null}
-                </article>
-              </Fragment>
-            );
-          })}
+              {showSelectedSettings ? (
+                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <MenuMetric label="월 공헌이익" value={formatCompactCurrency(selectedMenuResult.monthlyContribution)} tone="blue" />
+                  <MenuMetric label="30% 기준가" value={formatCurrency(selectedMenuResult.ingredientRecommendedAveragePrice)} tone="amber" />
+                  <MenuMetric label="목표 순익 기준가" value={formatCurrency(selectedMenuResult.goalRecommendedAveragePrice)} tone="blue" />
+                  <button type="button" onClick={onOpenInputTray} className="rounded-2xl bg-[#eef3ff] px-4 py-3 text-sm font-semibold text-[#1b4797]">세부 비용 패널 열기</button>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
         </div>
       </section>
 
@@ -1091,84 +341,23 @@ export function ResultsDashboard({
         <div className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_48px_rgba(27,71,151,0.08)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
-                Profit Diagnosis
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">Profit Diagnosis</p>
               <h3 className="mt-2 text-xl font-semibold text-[#13233f]">손익 진단</h3>
-              <p className="mt-2 text-sm leading-6 text-[#61728f]">
-                어떤 메뉴와 어떤 비용을 먼저 손봐야 하는지 빠르게 판단하는 영역입니다.
-              </p>
+              <p className="mt-2 text-sm leading-6 text-[#61728f]">메뉴와 비용 중 어디를 먼저 손봐야 하는지 빠르게 보는 영역입니다.</p>
             </div>
-
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => dispatch({ type: "setAnalysisMode", mode: "current" })}
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm font-semibold transition",
-                  state.analysisMode === "current"
-                    ? "bg-[#1b4797] text-white"
-                    : "bg-[#eef3ff] text-[#1b4797] hover:bg-[#dde8ff]",
-                )}
-              >
-                현재 기준 분석
-              </button>
-              <button
-                type="button"
-                onClick={() => dispatch({ type: "setAnalysisMode", mode: "target" })}
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm font-semibold transition",
-                  state.analysisMode === "target"
-                    ? "bg-[#1b4797] text-white"
-                    : "bg-[#eef3ff] text-[#1b4797] hover:bg-[#dde8ff]",
-                )}
-              >
-                목표 기준 역산
-              </button>
+              <button type="button" onClick={() => dispatch({ type: "setAnalysisMode", mode: "current" })} className={cn("rounded-full px-4 py-2 text-sm font-semibold transition", state.analysisMode === "current" ? "bg-[#1b4797] text-white" : "bg-[#eef3ff] text-[#1b4797] hover:bg-[#dde8ff]")}>현재 기준 분석</button>
+              <button type="button" onClick={() => dispatch({ type: "setAnalysisMode", mode: "target" })} className={cn("rounded-full px-4 py-2 text-sm font-semibold transition", state.analysisMode === "target" ? "bg-[#1b4797] text-white" : "bg-[#eef3ff] text-[#1b4797] hover:bg-[#dde8ff]")}>목표 기준 역산</button>
             </div>
           </div>
-
           <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <SummaryStat
-              label="1년 기준 순이익"
-              value={formatCompactCurrency(result.totals.annualNetProfit)}
-              description="지금 가격과 비용 구조를 12개월 유지했을 때의 예상 순이익입니다."
-              accent="blue"
-            />
-            <SummaryStat
-              label="먼저 손볼 메뉴"
-              value={highestRawRateMenu?.name ?? "계산 대기"}
-              description={
-                highestRawRateMenu
-                  ? `현재 원재료비율 ${formatPercent(highestRawRateMenu.directIngredientRate)} / 목표 ${percentFromRatio(
-                      state.targetIngredientRate,
-                    )}%`
-                  : "목표 원재료비율을 가장 크게 넘는 메뉴가 여기에 표시됩니다."
-              }
-              accent="amber"
-            />
-            <SummaryStat
-              label="운영비가 무거운 메뉴"
-              value={highestEffectiveCostMenu?.name ?? "계산 대기"}
-              description={
-                highestEffectiveCostMenu
-                  ? `운영 반영 원가율 ${formatPercent(highestEffectiveCostMenu.costRate)} / 포장·수수료 포함`
-                  : "포장재와 수수료까지 넣었을 때 가장 무거운 메뉴가 표시됩니다."
-              }
-              accent="rose"
-            />
+            <SummaryStat label="1년 기준 순이익" value={formatCompactCurrency(result.totals.annualNetProfit)} description="현재 가격과 비용 구조를 12개월 유지했을 때의 예상 순이익입니다." accent="blue" />
+            <SummaryStat label="먼저 손볼 메뉴" value={highestRawRateMenu?.name ?? "계산 대기"} description={highestRawRateMenu ? `원재료비율 ${formatPercent(highestRawRateMenu.directIngredientRate)}` : "목표 원재료비율을 가장 크게 넘는 메뉴가 표시됩니다."} accent="amber" />
+            <SummaryStat label="운영비가 무거운 메뉴" value={highestEffectiveCostMenu?.name ?? "계산 대기"} description={highestEffectiveCostMenu ? `운영 원가율 ${formatPercent(highestEffectiveCostMenu.costRate)}` : "포장재와 수수료까지 넣었을 때 가장 무거운 메뉴가 표시됩니다."} accent="rose" />
           </div>
-
           {state.analysisMode === "target" ? (
             <div className="mt-5 rounded-[26px] border border-[#d9e3f6] bg-[#f8fbff] p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]">
-                <Goal className="h-4 w-4" />
-                목표 기준 역산
-              </div>
-              <p className="mt-2 text-sm leading-6 text-[#61728f]">
-                목표 월 순이익을 맞추기 위해 필요한 객단가와 메뉴별 가격 차이를 함께 확인합니다.
-              </p>
-
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]"><Goal className="h-4 w-4" />목표 기준 역산</div>
               <div className="mt-4 grid gap-3 md:grid-cols-3">
                 <MenuMetric label="현재 월 순이익" value={formatCompactCurrency(result.totals.monthlyNetProfit)} />
                 <MenuMetric label="목표까지 차이" value={formatCompactCurrency(result.totals.targetMonthlyGap)} tone="amber" />
@@ -1181,93 +370,27 @@ export function ResultsDashboard({
         <aside className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_48px_rgba(27,71,151,0.08)]">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]">
-                <Sparkles className="h-4 w-4" />
-                AI 분석
-              </div>
-              <p className="mt-2 text-sm leading-6 text-[#61728f]">
-                지금 손봐야 할 메뉴와 비용을 문장으로 바로 읽어주는 보조 분석입니다.
-              </p>
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]"><Sparkles className="h-4 w-4" />AI 분석</div>
+              <p className="mt-2 text-sm leading-6 text-[#61728f]">지금 손봐야 할 메뉴와 비용을 짧게 읽어주는 보조 분석입니다.</p>
             </div>
-
-            <button
-              type="button"
-              onClick={() => void handleRunAiInsights()}
-              disabled={aiStatus === "loading"}
-              className={cn(
-                "inline-flex min-w-[110px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition",
-                aiStatus === "loading"
-                  ? "cursor-wait bg-[#dbe6fb] text-[#5d76a9]"
-                  : "bg-[#1b4797] text-white hover:bg-[#163d82]",
-              )}
-            >
-              <Sparkles className="h-4 w-4" />
-              {aiStatus === "loading" ? "AI 분석 중" : "AI 분석"}
+            <button type="button" onClick={() => void handleRunAiInsights()} disabled={aiStatus === "loading"} className={cn("inline-flex min-w-[110px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition", aiStatus === "loading" ? "cursor-wait bg-[#dbe6fb] text-[#5d76a9]" : "bg-[#1b4797] text-white hover:bg-[#163d82]")}>
+              <Sparkles className="h-4 w-4" />{aiStatus === "loading" ? "AI 분석 중" : "AI 분석"}
             </button>
           </div>
-
           <div className="mt-4 flex flex-wrap gap-2">
-            <span className="rounded-full bg-[#eef3ff] px-3 py-1.5 text-xs font-semibold text-[#1b4797]">
-              {aiInsights.length > 0 ? "GPT 분석 사용 가능" : "기본 규칙 분석"}
-            </span>
-            {aiModel ? (
-              <span className="rounded-full bg-[#f8fbff] px-3 py-1.5 text-xs font-semibold text-[#61728f]">
-                모델 {aiModel}
-              </span>
-            ) : null}
-            {isAiStale ? (
-              <span className="rounded-full bg-[#fff4dc] px-3 py-1.5 text-xs font-semibold text-[#9b6300]">
-                설정이 바뀌어 AI 분석이 예전 기준입니다
-              </span>
-            ) : null}
+            <span className="rounded-full bg-[#eef3ff] px-3 py-1.5 text-xs font-semibold text-[#1b4797]">{aiInsights.length > 0 ? "GPT 분석 사용 가능" : "기본 규칙 분석"}</span>
+            {aiModel ? <span className="rounded-full bg-[#f8fbff] px-3 py-1.5 text-xs font-semibold text-[#61728f]">모델 {aiModel}</span> : null}
+            {isAiStale ? <span className="rounded-full bg-[#fff4dc] px-3 py-1.5 text-xs font-semibold text-[#9b6300]">설정이 바뀌어 AI 분석이 이전 기준입니다.</span> : null}
           </div>
-
-          {aiMessage ? (
-            <div
-              className={cn(
-                "mt-4 rounded-[18px] border px-4 py-3 text-sm leading-6",
-                aiStatus === "error"
-                  ? "border-[#f4d7dc] bg-[#fff5f6] text-[#8f4152]"
-                  : "border-[#d9e3f6] bg-[#f8fbff] text-[#5a6d8f]",
-              )}
-            >
-              {aiMessage}
-            </div>
-          ) : null}
-
-          <div className="mt-4 space-y-3">
-            {displayedInsights.map((insight) => (
-              <div
-                key={insight}
-                className="rounded-[22px] bg-[#f8fbff] p-4 text-sm leading-7 text-[#425673]"
-              >
-                {insight}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onOpenInputTray}
-              className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]"
-            >
-              <WalletCards className="h-4 w-4" />
-              세부 비용 더 조정하기
-            </button>
-          </div>
+          {aiMessage ? <div className={cn("mt-4 rounded-[18px] border px-4 py-3 text-sm leading-6", aiStatus === "error" ? "border-[#f4d7dc] bg-[#fff5f6] text-[#8f4152]" : "border-[#d9e3f6] bg-[#f8fbff] text-[#5a6d8f]")}>{aiMessage}</div> : null}
+          <div className="mt-4 space-y-3">{displayedInsights.map((insight) => <div key={insight} className="rounded-[22px] bg-[#f8fbff] p-4 text-sm leading-7 text-[#425673]">{insight}</div>)}</div>
+          <div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={onOpenInputTray} className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]"><WalletCards className="h-4 w-4" />세부 비용 더 조정하기</button></div>
         </aside>
       </section>
 
       <section className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_48px_rgba(27,71,151,0.08)]">
-        <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]">
-          <Calculator className="h-4 w-4" />
-          전체 손익 구조
-        </div>
-        <p className="mt-2 text-sm leading-6 text-[#61728f]">
-          원재료비, 포장재, 수수료, 인건비, 고정비 중 무엇이 손익을 가장 크게 끌어내리는지 비교합니다.
-        </p>
-
+        <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]"><Calculator className="h-4 w-4" />전체 손익 구조</div>
+        <p className="mt-2 text-sm leading-6 text-[#61728f]">원재료비, 포장재, 수수료, 인건비, 고정비 중 어디가 가장 무거운지 비교합니다.</p>
         <div className="mt-5 grid gap-3">
           <MetricBar label="직접 원재료비" amount={calculation.monthlyDirectCost} total={costBase} tone="bg-[#1b4797]" />
           <MetricBar label="포장재" amount={calculation.monthlyPackagingCost} total={costBase} tone="bg-[#3a6cc5]" />
@@ -1276,38 +399,14 @@ export function ResultsDashboard({
           <MetricBar label="인건비" amount={calculation.monthlyLaborCost} total={costBase} tone="bg-[#d86a76]" />
           <MetricBar label="고정비" amount={calculation.monthlyFixedCost} total={costBase} tone="bg-[#7f91b4]" />
         </div>
-
         <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <div className="rounded-[24px] bg-[#f8fbff] p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]">
-              <PiggyBank className="h-4 w-4" />
-              총 공헌이익
-            </div>
-            <p className="mt-3 text-xl font-semibold text-[#13233f]">
-              {formatCompactCurrency(calculation.monthlyContribution)}
-            </p>
-            <p className="mt-2 text-xs leading-5 text-[#61728f]">
-              직접 원가와 변동비를 뺀 뒤 남는 월 기준 여유 금액입니다.
-            </p>
-          </div>
-          <div className="rounded-[24px] bg-[#f8fbff] p-4">
-            <p className="text-sm font-semibold text-[#18376c]">월 총매출</p>
-            <p className="mt-3 text-xl font-semibold text-[#13233f]">
-              {formatCompactCurrency(result.totals.monthlySalesGross)}
-            </p>
-            <p className="mt-2 text-xs leading-5 text-[#61728f]">
-              현재 메뉴 가격과 판매 비중으로 추정한 한 달 총매출입니다.
-            </p>
-          </div>
-          <div className="rounded-[24px] bg-[#f8fbff] p-4">
-            <p className="text-sm font-semibold text-[#18376c]">목표 달성 상태</p>
-            <p className="mt-3 text-xl font-semibold text-[#13233f]">{result.feasibility.label}</p>
-            <p className="mt-2 text-xs leading-5 text-[#61728f]">
-              권장가 평균 인상폭을 기준으로 목표가 현실적인지 판정한 결과입니다.
-            </p>
-          </div>
+          <div className="rounded-[24px] bg-[#f8fbff] p-4"><div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]"><PiggyBank className="h-4 w-4" />총 공헌이익</div><p className="mt-3 text-xl font-semibold text-[#13233f]">{formatCompactCurrency(calculation.monthlyContribution)}</p></div>
+          <div className="rounded-[24px] bg-[#f8fbff] p-4"><p className="text-sm font-semibold text-[#18376c]">월 총매출</p><p className="mt-3 text-xl font-semibold text-[#13233f]">{formatCompactCurrency(result.totals.monthlySalesGross)}</p></div>
+          <div className="rounded-[24px] bg-[#f8fbff] p-4"><p className="text-sm font-semibold text-[#18376c]">목표 달성 상태</p><p className="mt-3 text-xl font-semibold text-[#13233f]">{result.feasibility.label}</p></div>
         </div>
       </section>
     </section>
   );
 }
+
+
