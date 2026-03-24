@@ -88,6 +88,7 @@ export function CafePricingApp() {
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>("results");
   const [isInputTrayOpen, setIsInputTrayOpen] = useState(false);
   const [isOnboardingReopened, setIsOnboardingReopened] = useState(false);
+  const inlineInputTrayRef = useRef<HTMLDivElement | null>(null);
   const skipStatePersist = useRef(true);
   const skipScenarioPersist = useRef(true);
 
@@ -108,6 +109,21 @@ export function CafePricingApp() {
 
     saveStoredScenarios(savedScenarios);
   }, [savedScenarios]);
+
+  useEffect(() => {
+    if (!isInputTrayOpen || typeof window === "undefined") {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      inlineInputTrayRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isInputTrayOpen]);
 
   const result = useMemo(() => calculateAppState(state), [state]);
   const activeTemplate = getTemplateById(state.wizard.templateId);
@@ -418,11 +434,23 @@ export function CafePricingApp() {
               isInputTrayOpen={isInputTrayOpen}
               onOpenInputTray={() => setIsInputTrayOpen(true)}
               onToggleInputTray={() => setIsInputTrayOpen((current) => !current)}
+              inlineInputTray={
+                isInputTrayOpen ? (
+                  <div ref={inlineInputTrayRef}>
+                    <InputTray
+                      state={state}
+                      store={state.store}
+                      dispatch={dispatch}
+                      onClose={() => setIsInputTrayOpen(false)}
+                    />
+                  </div>
+                ) : null
+              }
             />
           </div>
 
-          {(mobilePanel === "settings" || isInputTrayOpen) && (
-            <div className={cn(mobilePanel !== "settings" && "hidden xl:block")}>
+          {mobilePanel === "settings" && (
+            <div className="xl:hidden">
               <InputTray
                 state={state}
                 store={state.store}

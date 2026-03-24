@@ -31,6 +31,7 @@ interface ResultsDashboardProps {
   isInputTrayOpen: boolean;
   onOpenInputTray: () => void;
   onToggleInputTray: () => void;
+  inlineInputTray?: React.ReactNode;
 }
 
 function NumberInput({
@@ -67,11 +68,13 @@ function SummaryStat({
   value,
   description,
   accent,
+  compact = false,
 }: {
   label: string;
   value: string;
   description: string;
   accent?: "blue" | "amber" | "rose" | "emerald";
+  compact?: boolean;
 }) {
   const accentClass =
     accent === "amber"
@@ -85,15 +88,21 @@ function SummaryStat({
   return (
     <article
       className={cn(
-        "rounded-[24px] border p-4 shadow-[0_10px_24px_rgba(27,71,151,0.05)]",
+        compact
+          ? "rounded-[20px] border p-3 shadow-[0_8px_20px_rgba(27,71,151,0.04)]"
+          : "rounded-[24px] border p-4 shadow-[0_10px_24px_rgba(27,71,151,0.05)]",
         accentClass,
       )}
     >
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
         {label}
       </p>
-      <p className="mt-3 text-2xl font-semibold text-[#13233f]">{value}</p>
-      <p className="mt-2 text-xs leading-5 text-[#61728f]">{description}</p>
+      <p className={cn("font-semibold text-[#13233f]", compact ? "mt-2 text-xl" : "mt-3 text-2xl")}>
+        {value}
+      </p>
+      <p className={cn("text-[#61728f]", compact ? "mt-1 text-[11px] leading-4" : "mt-2 text-xs leading-5")}>
+        {description}
+      </p>
     </article>
   );
 }
@@ -167,11 +176,13 @@ function EditablePriceGroup({
 
 function RecommendedPriceList({
   prices,
+  inverse = false,
 }: {
   prices: Partial<Record<Temperature, number>>;
+  inverse?: boolean;
 }) {
   return (
-    <div className="space-y-1 text-sm font-semibold text-[#13233f]">
+    <div className={cn("space-y-1 font-semibold", inverse ? "text-base text-white" : "text-sm text-[#13233f]")}>
       {Object.entries(prices).map(([temperature, price]) => (
         <div key={temperature}>
           {temperature.toUpperCase()} {formatCurrency(price)}
@@ -434,6 +445,7 @@ export function ResultsDashboard({
   isInputTrayOpen,
   onOpenInputTray,
   onToggleInputTray,
+  inlineInputTray,
 }: ResultsDashboardProps) {
   const [expandedMenuId, setExpandedMenuId] = useState<string | null>(null);
   const store = state.store;
@@ -479,20 +491,16 @@ export function ResultsDashboard({
 
   return (
     <section className="space-y-5">
-      <section className="sticky top-4 z-20 rounded-[32px] border border-[#d9e3f6] bg-white/95 p-5 shadow-[0_30px_80px_rgba(27,71,151,0.12)] backdrop-blur">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <section className="sticky top-3 z-20 rounded-[28px] border border-[#d9e3f6] bg-white/92 p-4 shadow-[0_18px_42px_rgba(27,71,151,0.10)] backdrop-blur">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
               Answer First
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-[#13233f]">지금 가장 먼저 봐야 할 답</h2>
-            <p className="mt-2 text-sm leading-6 text-[#61728f]">
-              가격과 비용을 조금씩 바꾸면 아래 숫자가 바로 달라집니다. 상세 설정은 아래로
-              접어두고, 먼저 결과부터 확인하세요.
-            </p>
+            <h2 className="mt-1 text-xl font-semibold text-[#13233f]">지금 먼저 볼 숫자</h2>
           </div>
 
-          <div className="flex flex-col gap-2 rounded-[24px] border border-[#d9e3f6] bg-[#f8fbff] p-4 sm:min-w-[300px]">
+          <div className="flex flex-col gap-2 rounded-[22px] border border-[#d9e3f6] bg-[#f8fbff] p-3 sm:min-w-[280px]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
               목표 월 순이익
             </p>
@@ -518,23 +526,27 @@ export function ResultsDashboard({
                 : `목표까지 ${formatCompactCurrency(result.totals.targetMonthlyGap)} 차이`
             }
             accent={result.totals.monthlyNetProfit >= 0 ? "blue" : "rose"}
+            compact
           />
           <SummaryStat
             label="연 순이익"
             value={formatCompactCurrency(result.totals.annualNetProfit)}
             description="현재 설정을 12개월 유지했을 때의 예상 순이익입니다."
+            compact
           />
           <SummaryStat
             label="필요 객단가"
             value={formatCompactCurrency(calculation.requiredAverageTicket)}
             description="현재 방문객 수와 운영일 기준으로 목표를 맞추기 위해 필요한 평균 객단가입니다."
             accent="amber"
+            compact
           />
           <SummaryStat
             label="평균 원가율"
             value={formatPercent(averageCostRate)}
             description={`목표 달성 평가는 ${result.feasibility.label} 단계입니다.`}
             accent={tone === "rose" ? "rose" : tone === "amber" ? "amber" : "emerald"}
+            compact
           />
         </div>
       </section>
@@ -642,6 +654,8 @@ export function ResultsDashboard({
         </div>
       </section>
 
+      {inlineInputTray ? <div className="hidden xl:block">{inlineInputTray}</div> : null}
+
       <section className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_48px_rgba(27,71,151,0.08)]">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -715,7 +729,7 @@ export function ResultsDashboard({
                       ) : (
                         <ChevronDown className="h-4 w-4" />
                       )}
-                      {expanded ? "상세 닫기" : "상세 보기"}
+                      {expanded ? "상세 닫기" : "상세 설정"}
                     </button>
                   </div>
 
@@ -741,20 +755,20 @@ export function ResultsDashboard({
                       </div>
                     </div>
 
-                    <div className="rounded-[24px] border border-[#e0e8f8] bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
+                    <div className="rounded-[24px] border border-[#2955a4] bg-[linear-gradient(135deg,#1b4797_0%,#2f62b5_100%)] p-4 text-white shadow-[0_16px_34px_rgba(27,71,151,0.20)]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/72">
                         권장 판매가
                       </p>
                       <div className="mt-3">
-                        <RecommendedPriceList prices={menuResult.recommendedPrices} />
+                        <RecommendedPriceList prices={menuResult.recommendedPrices} inverse />
                       </div>
                       <div className="mt-3">
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold",
                             menuResult.priceGap >= 0
-                              ? "bg-[#fff7e5] text-[#9c6a14]"
-                              : "bg-[#eef3ff] text-[#1b4797]",
+                              ? "bg-white/16 text-white"
+                              : "bg-white text-[#1b4797]",
                           )}
                         >
                           {menuResult.priceGap >= 0 ? (
