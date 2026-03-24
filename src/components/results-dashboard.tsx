@@ -13,6 +13,7 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import { NumericInput } from "@/components/numeric-input";
 import { buildAiInsightRequest, type AiInsightResponse } from "@/lib/ai-insights";
 import { formatCompactCurrency, formatCurrency, formatPercent } from "@/lib/format";
 import { cn, percentFromRatio, ratioFromPercentInput } from "@/lib/utils";
@@ -48,20 +49,12 @@ function NumberInput({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "flex items-center rounded-2xl border border-[#d9e3f6] bg-white px-3",
-        className,
-      )}
-    >
-      <input
-        type="number"
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(event) => onChange(Number(event.target.value))}
-        className="h-10 w-full bg-transparent text-sm text-[#13233f] outline-none"
-      />
-      {suffix ? <span className="text-xs text-[#7183a3]">{suffix}</span> : null}
-    </div>
+    <NumericInput
+      value={value}
+      onChange={onChange}
+      suffix={suffix}
+      className={className}
+    />
   );
 }
 
@@ -647,12 +640,9 @@ export function ResultsDashboard({
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6c7fa5]">
-              Answer First
+              Summary
             </p>
-            <h2 className="mt-1 text-base font-semibold text-[#13233f]">지금 먼저 볼 숫자</h2>
-            <p className="mt-1 text-xs text-[#61728f]">
-              가격을 바꾸면 아래 숫자가 바로 다시 계산됩니다.
-            </p>
+            <h2 className="mt-1 text-base font-semibold text-[#13233f]">요약</h2>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[420px]">
@@ -1164,18 +1154,14 @@ export function ResultsDashboard({
               onClick={() => void handleRunAiInsights()}
               disabled={aiStatus === "loading"}
               className={cn(
-                "inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition",
+                "inline-flex min-w-[110px] items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition",
                 aiStatus === "loading"
                   ? "cursor-wait bg-[#dbe6fb] text-[#5d76a9]"
                   : "bg-[#1b4797] text-white hover:bg-[#163d82]",
               )}
             >
               <Sparkles className="h-4 w-4" />
-              {aiStatus === "loading"
-                ? "GPT 분석 불러오는 중"
-                : aiInsights.length > 0
-                  ? "GPT 분석 다시 보기"
-                  : "GPT 분석 보기"}
+              {aiStatus === "loading" ? "AI 분석 중" : "AI 분석"}
             </button>
           </div>
 

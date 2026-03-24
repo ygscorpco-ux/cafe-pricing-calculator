@@ -19,7 +19,6 @@ import { ResultsDashboard } from "@/components/results-dashboard";
 import { appReducer, createInitialAppState } from "@/lib/app-state";
 import { calculateAppState } from "@/lib/calculations";
 import { TEMPLATES } from "@/lib/constants";
-import { formatCompactCurrency } from "@/lib/format";
 import { loadStoredScenarios, loadStoredState, saveStoredScenarios, saveStoredState } from "@/lib/storage";
 import { getTemplateById } from "@/lib/seeds";
 import { cn, createId, deepClone } from "@/lib/utils";
@@ -175,64 +174,24 @@ export function CafePricingApp() {
     <div className="min-h-screen px-4 py-4 text-[#13233f] sm:px-6 sm:py-6 xl:px-8">
       <div className="mx-auto max-w-[1660px]">
         <header className="rounded-[34px] border border-white/80 bg-white/90 px-5 py-5 shadow-[0_30px_80px_rgba(27,71,151,0.10)] backdrop-blur sm:px-6 xl:px-8">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-4xl">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div className="rounded-[28px] border border-[#dbe5f9] bg-[#f8fbff] px-4 py-3 shadow-[0_16px_34px_rgba(27,71,151,0.08)]">
-                  <Image
-                    src="/branding/cafe.png"
-                    alt="얼만교 로고"
-                    width={220}
-                    height={52}
-                    className="h-auto w-[170px] sm:w-[220px]"
-                    priority
-                  />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#6c7fa5]">
-                    Cafe Pricing Workbench
-                  </p>
-                  <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#13233f] sm:text-4xl">
-                    아따 얼만교?
-                  </h1>
-                </div>
-              </div>
-
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-[#61728f] sm:text-base">
-                카페 사장님이 가장 먼저 봐야 하는 답은 간단합니다. 지금 가격으로 얼마나 남는지,
-                목표만큼 벌려면 얼마를 받아야 하는지. 이 화면은 그 답을 먼저 보여주고, 설정은
-                필요한 만큼만 아래에서 만지게 만든 가격 설계 작업판입니다.
-              </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="rounded-[28px] border border-[#dbe5f9] bg-[#f8fbff] px-4 py-3 shadow-[0_16px_34px_rgba(27,71,151,0.08)]">
+              <Image
+                src="/branding/cafe.png"
+                alt="얼만교 로고"
+                width={220}
+                height={52}
+                className="h-auto w-[170px] sm:w-[220px]"
+                priority
+              />
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[26px] border border-[#d9e3f6] bg-[#f8fbff] px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
-                  현재 템플릿
-                </p>
-                <p className="mt-2 text-sm font-semibold text-[#18376c]">{activeTemplate.name}</p>
-                <p className="mt-1 text-xs leading-5 text-[#61728f]">{activeTemplate.description}</p>
-              </div>
-              <div className="rounded-[26px] border border-[#d9e3f6] bg-white px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6c7fa5]">
-                  지금 남는 금액
-                </p>
-                <p className="mt-2 text-sm font-semibold text-[#13233f]">
-                  {formatCompactCurrency(result.totals.monthlyNetProfit)}
-                </p>
-                <p className="mt-1 text-xs text-[#61728f]">
-                  목표까지 차이 {formatCompactCurrency(result.totals.targetMonthlyGap)}
-                </p>
-              </div>
-              <div className="rounded-[26px] border border-[#d9e3f6] bg-[#1b4797] px-4 py-3 text-white">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
-                  사용 방식
-                </p>
-                <p className="mt-2 text-sm font-semibold">30% 기준 + 답 먼저</p>
-                <p className="mt-1 text-xs leading-5 text-white/75">
-                  원재료비율 30%와 순이익을 먼저 보고, 필요한 비용만 펼쳐서 손보세요.
-                </p>
-              </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#6c7fa5]">
+                Cafe Pricing Workbench
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#13233f] sm:text-4xl">
+                아따 얼만교?
+              </h1>
             </div>
           </div>
         </header>
@@ -273,12 +232,8 @@ export function CafePricingApp() {
                 Control Rail
               </p>
               <h2 className="mt-2 text-xl font-semibold text-[#13233f]">
-                자주 쓰는 설정만 위로 올렸습니다.
+                설정 변경 및 저장
               </h2>
-              <p className="mt-2 text-sm leading-6 text-[#61728f]">
-                시작 기준, 템플릿, 저장/불러오기, 리셋만 상단에 두고 나머지 세부 항목은 아래
-                상세 설정에 접어두었습니다.
-              </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -455,14 +410,6 @@ export function CafePricingApp() {
           )}
         </main>
 
-        <footer className="mt-6 flex flex-wrap items-center gap-3 rounded-[26px] border border-white/80 bg-white/80 px-5 py-4 text-xs text-[#61728f] shadow-[0_16px_40px_rgba(27,71,151,0.06)]">
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-3 py-2 font-semibold text-[#1b4797]">
-            <Save className="h-3.5 w-3.5" />
-            현재 상태 자동 저장 중
-          </span>
-          <span>기본 판매가는 원재료비율 30% 기준으로 시작하며, 단가와 가격은 바로 수정할 수 있습니다.</span>
-          <span>AI 분석은 추후 서버 API만 연결하면 이 화면 위에 자연스럽게 얹을 수 있게 구조를 유지했습니다.</span>
-        </footer>
       </div>
 
       {isOnboardingOpen ? (

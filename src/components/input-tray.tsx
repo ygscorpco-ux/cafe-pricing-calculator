@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { NumericInput } from "@/components/numeric-input";
 import {
   CATEGORY_META,
   FIXED_COST_FIELDS,
@@ -150,18 +151,13 @@ function FieldInput({
           {description ? <HelpTooltip content={description} /> : null}
         </div>
       ) : null}
-      <div className="flex items-center rounded-2xl border border-[#d9e3f6] bg-white px-3">
-        <input
-          type="number"
-          value={Number.isFinite(displayValue) ? displayValue : 0}
-          onChange={(event) => {
-            const numeric = Number(event.target.value);
-            onChange(kind === "percent" ? ratioFromPercentInput(numeric) : numeric);
-          }}
-          className="h-10 w-full bg-transparent text-sm text-[#13233f] outline-none"
-        />
-        <span className="text-xs text-[#7183a3]">{suffix}</span>
-      </div>
+      <NumericInput
+        value={displayValue}
+        onChange={(nextValue) =>
+          onChange(kind === "percent" ? ratioFromPercentInput(nextValue) : nextValue)
+        }
+        suffix={suffix}
+      />
     </label>
   );
 }
