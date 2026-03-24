@@ -13,6 +13,7 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import { buildAiInsightRequest, type AiInsightResponse } from "@/lib/ai-insights";
 import { formatCompactCurrency, formatCurrency, formatPercent } from "@/lib/format";
 import { cn, percentFromRatio, ratioFromPercentInput } from "@/lib/utils";
 import type { AppAction } from "@/lib/app-state";
@@ -526,6 +527,11 @@ export function ResultsDashboard({
   inlineInputTray,
 }: ResultsDashboardProps) {
   const [expandedMenuId, setExpandedMenuId] = useState<string | null>(null);
+  const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [aiInsights, setAiInsights] = useState<string[]>([]);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [aiModel, setAiModel] = useState<string | null>(null);
+  const [lastAiRequestKey, setLastAiRequestKey] = useState<string | null>(null);
   const store = state.store;
   const calculation = result.result;
   const ingredientLabels = useMemo(
@@ -577,9 +583,63 @@ export function ResultsDashboard({
     largestIngredientGapMenu,
     strongestMarginMenu,
   });
+  const aiRequest = useMemo(() => buildAiInsightRequest(state, result), [state, result]);
+  const aiRequestKey = useMemo(() => JSON.stringify(aiRequest), [aiRequest]);
+  const isAiStale = Boolean(lastAiRequestKey && lastAiRequestKey !== aiRequestKey);
+  const displayedInsights = aiInsights.length > 0 ? aiInsights : insights;
 
   const basisValue =
     state.wizard.salesBasis === "monthly" ? store.sales.monthlySales : store.sales.annualSales;
+
+  async function handleRunAiInsights() {
+    setAiStatus("loading");
+    setAiMessage(null);
+
+    try {
+      const response = await fetch("/api/ai-insights", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: aiRequestKey,
+      });
+
+      const payload = (await response.json()) as AiInsightResponse | { error?: string };
+
+      if (!response.ok) {
+        const nextMessage =
+          "message" in payload && typeof payload.message === "string"
+            ? payload.message
+            : "error" in payload && typeof payload.error === "string"
+              ? payload.error
+              : "AI 분석을 불러오지 못했습니다.";
+
+        setAiStatus("error");
+        setAiMessage(nextMessage);
+        return;
+      }
+
+      if (!("insights" in payload) || !Array.isArray(payload.insights)) {
+        setAiStatus("error");
+        setAiMessage("AI 분석 응답 형식이 올바르지 않습니다.");
+        return;
+      }
+
+      setAiInsights(payload.insights);
+      setAiModel(payload.model ?? null);
+      setLastAiRequestKey(aiRequestKey);
+      setAiStatus("ready");
+      setAiMessage(
+        payload.message ??
+          (payload.source === "ai"
+            ? "현재 수치 기준으로 GPT 분석을 다시 읽어왔습니다."
+            : "기본 규칙 분석을 사용 중입니다."),
+      );
+    } catch {
+      setAiStatus("error");
+      setAiMessage("AI 분석 요청 중 네트워크 오류가 발생했습니다.");
+    }
+  }
 
   return (
     <section className="space-y-5">
@@ -1088,16 +1148,68 @@ export function ResultsDashboard({
         </div>
 
         <aside className="rounded-[30px] border border-[#d9e3f6] bg-white p-5 shadow-[0_18px_48px_rgba(27,71,151,0.08)]">
-          <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]">
-            <Sparkles className="h-4 w-4" />
-            자동 분석
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#18376c]">
+                <Sparkles className="h-4 w-4" />
+                자동 분석
+              </div>
+              <p className="mt-2 text-sm leading-6 text-[#61728f]">
+                기본 규칙 분석 위에 GPT 분석을 덧씌워, 지금 손봐야 할 메뉴와 비용을 바로 읽어줍니다.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void handleRunAiInsights()}
+              disabled={aiStatus === "loading"}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition",
+                aiStatus === "loading"
+                  ? "cursor-wait bg-[#dbe6fb] text-[#5d76a9]"
+                  : "bg-[#1b4797] text-white hover:bg-[#163d82]",
+              )}
+            >
+              <Sparkles className="h-4 w-4" />
+              {aiStatus === "loading"
+                ? "GPT 분석 불러오는 중"
+                : aiInsights.length > 0
+                  ? "GPT 분석 다시 보기"
+                  : "GPT 분석 보기"}
+            </button>
           </div>
-          <p className="mt-2 text-sm leading-6 text-[#61728f]">
-            원재료비율과 운영 원가를 같이 봐서 바로 읽어주는 핵심 인사이트입니다.
-          </p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full bg-[#eef3ff] px-3 py-1.5 text-xs font-semibold text-[#1b4797]">
+              {aiInsights.length > 0 ? "GPT 분석 사용 가능" : "기본 규칙 분석"}
+            </span>
+            {aiModel ? (
+              <span className="rounded-full bg-[#f8fbff] px-3 py-1.5 text-xs font-semibold text-[#61728f]">
+                모델 {aiModel}
+              </span>
+            ) : null}
+            {isAiStale ? (
+              <span className="rounded-full bg-[#fff4dc] px-3 py-1.5 text-xs font-semibold text-[#9b6300]">
+                설정이 바뀌어 AI 분석이 예전 기준입니다
+              </span>
+            ) : null}
+          </div>
+
+          {aiMessage ? (
+            <div
+              className={cn(
+                "mt-4 rounded-[18px] border px-4 py-3 text-sm leading-6",
+                aiStatus === "error"
+                  ? "border-[#f4d7dc] bg-[#fff5f6] text-[#8f4152]"
+                  : "border-[#d9e3f6] bg-[#f8fbff] text-[#5a6d8f]",
+              )}
+            >
+              {aiMessage}
+            </div>
+          ) : null}
 
           <div className="mt-4 space-y-3">
-            {insights.map((insight) => (
+            {displayedInsights.map((insight) => (
               <div
                 key={insight}
                 className="rounded-[22px] bg-[#f8fbff] p-4 text-sm leading-7 text-[#425673]"
@@ -1107,14 +1219,16 @@ export function ResultsDashboard({
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={onOpenInputTray}
-            className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#1b4797] px-4 py-2.5 text-sm font-semibold text-white"
-          >
-            <WalletCards className="h-4 w-4" />
-            세부 비용 더 조정하기
-          </button>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onOpenInputTray}
+              className="inline-flex items-center gap-2 rounded-full bg-[#eef3ff] px-4 py-2.5 text-sm font-semibold text-[#1b4797]"
+            >
+              <WalletCards className="h-4 w-4" />
+              세부 비용 더 조정하기
+            </button>
+          </div>
         </aside>
       </section>
 

@@ -34,6 +34,22 @@ npm run dev
 
 브라우저에서 [http://localhost:3000](http://localhost:3000) 을 열면 됩니다.
 
+### AI 분석 연결
+
+`자동 분석` 패널은 기본 규칙 분석으로 먼저 동작하고, OpenAI API 키가 있으면 `GPT 분석 보기` 버튼으로 더 자연스러운 인사이트를 불러올 수 있습니다.
+
+1. 루트에 `.env.local` 파일을 만들고 아래 값을 넣습니다.
+2. 개발 서버를 다시 실행합니다.
+
+```bash
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-5-mini
+```
+
+- `OPENAI_API_KEY` 는 서버에서만 사용됩니다.
+- `OPENAI_MODEL` 은 선택값입니다. 비워두면 `gpt-5-mini` 를 기본 사용합니다.
+- 새 앱 기준으로는 더 최신 소형 모델을 쓰고 싶을 때 `gpt-5.4-mini` 로 바꿔도 됩니다.
+
 ## 스크립트
 
 ```bash
@@ -45,26 +61,20 @@ npm run build
 
 ## 정보 구조
 
-### 좌측 입력 패널
+### 상단 작업판
 
-- Quick Start
-- 설정 저장/불러오기/리셋
-- 매출 기준
-- 메뉴 스펙 안내
-- 직접 원재료비 단가
-- 포장재 단가
-- 변동비
-- 인건비
-- 고정비
-- 로스/폐기
-- 세금/가격 구조
+- 브랜딩 헤더
+- Control Rail
+- 답 먼저 요약 바
 
-### 중앙 결과 패널
+### 결과 중심 본문
 
-- 핵심 KPI 6개
+- 3초 퀵셋업
+- 메뉴별 가격/권장가 카드
+- 대시보드
+- 자동 분석
 - 전체 손익 구조
-- 메뉴별 가격/권장가 표
-- HOT/ICE별 상세 레시피/포장재 편집
+- 접히는 상세 설정 트레이
 
 ## 데이터 모델 요약
 
@@ -131,9 +141,11 @@ src/
   app/
   components/
     cafe-pricing-app.tsx
-    settings-sidebar.tsx
+    input-tray.tsx
+    onboarding-flow.tsx
     results-dashboard.tsx
   lib/
+    ai-insights.ts
     app-state.ts
     calculations.ts
     constants.ts
